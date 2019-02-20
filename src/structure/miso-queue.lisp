@@ -14,11 +14,10 @@
 
 (defstruct node
   (prev nil :type (or null node))
-  (value nil)
-  (status t :type boolean))
+  (value nil))
 
 (defstruct (queue (:constructor %make-queue))
-  "this miso queue is designed for Multi-In-Single-Out situation, the operation dequeue is not thread safe due to it should only be excuted in a single thread"
+  "this miso queue is designed for Multi-In-Single-Out situation, the operation de (means dequeue) and queue-empty-p are not thread safe due to it should only be excuted in a single thread"
   (head nil :type node)
   (tail nil :type node))
 
@@ -32,7 +31,7 @@
         (setf ,p ,value)))))
 
 (defun make-queue()
-  (let ((dummy (make-node :value nil :status nil)))
+  (let ((dummy (make-node :value nil)))
     (%make-queue :head dummy :tail dummy)))
 
 (defmethod en ((queue queue) e)
@@ -47,16 +46,13 @@
   (declare (optimize speed))
   (let ((e)
         (tail (queue-tail queue)))
-    (if (not (node-status tail))
-        (if (not (node-prev tail))
-            (setf e nil)
-            (let ((prev (node-prev tail)))
-              (setf e (node-value prev))
-              (setf (queue-tail queue) prev)
-              (setf (node-status prev) nil)))
-        (setf e nil)) ;;shouldn't walk here
+    (if (not (node-prev tail))
+        (setf e nil)
+        (let ((prev (node-prev tail)))
+          (setf e (node-value prev))
+          (setf (queue-tail queue) prev)))
     e))
 
 (defmethod queue-empty-p ((queue queue))
   (declare (optimize speed))
-  (not (node-status (queue-head queue))))
+  (not (node-prev (queue-tail queue))))
