@@ -28,7 +28,7 @@
       (lambda (,p)
         (if ,callback
             (funcall ,callback))
-        (setf ,p ,value)))))
+        ,value))))
 
 (defun make-queue()
   (let ((dummy (make-node :value nil)))
