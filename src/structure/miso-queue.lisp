@@ -17,7 +17,7 @@
   (value nil))
 
 (defstruct (queue (:constructor %make-queue))
-  "this miso queue is designed for Multi-In-Single-Out situation, the operation de (means dequeue) and queue-empty-p are not thread safe due to it should only be excuted in a single thread"
+  "this miso queue is designed for Multi-In-Single-Out situation, the operation de (means dequeue) is not thread safe due to it should only be excuted in a single thread"
   (head nil :type node)
   (tail nil :type node))
 
