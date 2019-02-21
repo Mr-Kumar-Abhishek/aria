@@ -12,3 +12,7 @@
            :find-top))
 
 (in-package :aria.structure.pair-heap)
+
+(defstruct node)
+
+(defstruct heap)

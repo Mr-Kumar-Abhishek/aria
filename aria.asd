@@ -5,5 +5,6 @@
   :components
   ((:module "structure"
             :components
-            ((:file "miso-queue")
-             (:file "pair-heap")))))
+            ((:file "miso-queue" :depends-on ("queue"))
+             (:file "pair-heap")
+             (:file "queue")))))
