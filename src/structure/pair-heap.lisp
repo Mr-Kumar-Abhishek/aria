@@ -51,8 +51,8 @@
     (if left
         (if right
             (if (funcall compare (funcall accessor left) (funcall accessor right))
-                (%make-heap :element left :sub (heap-sub heap))
-                (%make-heap :element right :sub (heap-sub self)))
+                (%make-heap :element left :sub (en (heap-sub self) heap))
+                (%make-heap :element right :sub (en (heap-sub heap) self)))
             self)
         heap)))
 
