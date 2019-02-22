@@ -15,7 +15,12 @@ this miso queue is designed for Multi-In-Single-Out situation, the operation `de
 - `(defmethod queue-empty-p ((self queue))`
 
 ## aria.structure.pair-heap
-a pairing heap, [wiki](https://en.wikipedia.org/wiki/Pairing_heap)
+A pairing heap, [wiki](https://en.wikipedia.org/wiki/Pairing_heap)
+
+### about
+In default options, `(make-heap)` will generate a min pairing heap with number type elements.
+
+With the help of `(make-heap)`'s option `:compare` and `:accessor`, the heap could expand to sort by a user defined way.
 
 ### provides
 - `(defstruct pair-heap)`
