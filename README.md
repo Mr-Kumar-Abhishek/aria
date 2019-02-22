@@ -1,7 +1,17 @@
 # aria
 data structures and some trival stuffs in common lisp for my lady UK Aria H. Kanzaki
 
-## aria.structures.miso-queue
+## aria.structure.queue
+just a normal queue
+
+### provides
+- `(defstruct queue)`
+- `(defun make-queue())`
+- `(defmethod en ((self queue) e))`
+- `(defmethod de ((self queue)))`
+- `(defmethod queue-empty-p ((self queue))`
+
+## aria.structure.miso-queue
 a multi-in-single-out queue
 
 ### about
