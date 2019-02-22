@@ -37,10 +37,10 @@
             (funcall ,callback))
         ,value))))
 
-(defmethod en ((queue queue) e)
+(defmethod en ((self queue) e)
   (declare (optimize speed))
   (let ((node (make-node :value e))
         (head))
-    (update (queue-head queue) node :callback (lambda () (setf head (queue-head queue))))
+    (update (queue-head self) node :callback (lambda () (setf head (queue-head self))))
     (update (node-prev head) node)
-    queue))
+    self))
