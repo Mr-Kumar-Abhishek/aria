@@ -10,9 +10,17 @@ this miso queue is designed for Multi-In-Single-Out situation, the operation `de
 ### provides
 - `(defstruct queue)`
 - `(defun make-queue())`
-- `(defmethod en ((queue queue) e))`
-- `(defmethod de ((queue queue)))`
-- `(defmethod queue-empty-p ((queue queue))`
+- `(defmethod en ((self queue) e))`
+- `(defmethod de ((self queue)))`
+- `(defmethod queue-empty-p ((self queue))`
 
 ## aria.structure.pair-heap
 a pairing heap, [wiki](https://en.wikipedia.org/wiki/Pairing_heap)
+
+### provides
+- `(defstruct pair-heap)`
+- `(defmethod make-heap (&key (element nil) (compare (lambda (x y) (< x y)) (accessor (lambda (x) x)))`
+- `(defmethod en ((self pair-heap) e))`
+- `(defmethod de ((self pair-heap)))`
+- `(defmethod heap-empty-p ((self pair-heap)))`
+- `(defmethod find-top ((self pair-heap)))`

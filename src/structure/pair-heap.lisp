@@ -12,7 +12,7 @@
                 :en
                 :de
                 :queue-empty-p)
-  (:export :heap
+  (:export :pair-heap
            :make-heap
            :en
            :de
@@ -29,10 +29,12 @@
   (sub (make-queue) :type queue)
   (element nil))
 
-(defstruct tree
+(defstruct pair-heap
   (heap (%make-heap) :type heap)
   (compare nil :type function)
   (accessor nil :type function))
+
+(defstruct (tree (:include pair-heap)))
 
 (defmethod compare (x y)
   (< x y))
@@ -82,3 +84,6 @@
 
 (defmethod heap-empty-p ((self tree))
   (%heap-empty-p (tree-heap self)))
+
+(defmethod find-top ((self tree))
+  (heap-element (tree-heap self)))
