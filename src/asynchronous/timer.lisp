@@ -10,7 +10,8 @@
                 :scheduler
                 :gen-scheduler
                 :add
-                :end)
+                :end
+                ::error-handler)
   (:import-from :aria.structure.pair-heap
                 :pair-heap
                 :make-heap
@@ -64,7 +65,7 @@
              (let* ((top (find-top tasks))
                     (lack (- (task-priority top) (get-internal-real-time))))
                (if (<= lack 0)
-                   (funcall (task-callable (de tasks)))
+                   (error-handler (task-callable (de tasks)))
                    (wait-on-semaphore semaphore :timeout (/ lack 1000))))
              (wait-on-semaphore semaphore))
          (loop-core-inner scheduler tasks semaphore))))

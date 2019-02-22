@@ -54,7 +54,7 @@
                end)))
 
 (defmethod loop-core ((tasks queue) (endp function) (self scheduler) semaphore)
-  (error-handle (de tasks))
+  (error-handler (de tasks))
   (if (not (funcall endp)) 
       (progn (if (queue-empty-p tasks) (wait self tasks semaphore))
              (loop-core tasks endp self semaphore))))
@@ -67,11 +67,11 @@
              (wait-on-semaphore semaphore :timeout 1)
              (setf (pause self) nil))))
 
-(defmethod error-handle ((task function))
+(defmethod error-handler ((task function))
   (handler-case (funcall task)
     (error (condition) (print condition *error-output*))))
 
-(defmethod error-handle (task))
+(defmethod error-handler (task))
 
 (defun gen-scheduler (&key (onclose nil) (name "Anonymous scheduler thread"))
   (let* ((bt:*default-special-bindings* `((*standard-output* . ,*standard-output*)
