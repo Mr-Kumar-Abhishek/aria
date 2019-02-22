@@ -31,7 +31,7 @@
       ((>= i max) 'done)
     (funcall f i)))
 
-(defstruct count
+(defstruct (count :atomic-accessors)
   (thread 0 :type number)
   (task 0 :type number))
 

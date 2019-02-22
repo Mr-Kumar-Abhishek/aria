@@ -10,11 +10,12 @@
 
 (in-package :aria.structure.queue)
 
-(defstruct node
+(defstruct (node :atomic-accessors)
   (prev nil :type (or null node))
   (value nil))
 
-(defstruct (queue (:constructor %make-queue))
+(defstruct (queue :atomic-accessors
+                  (:constructor %make-queue))
   (head nil :type node)
   (tail nil :type node))
 
