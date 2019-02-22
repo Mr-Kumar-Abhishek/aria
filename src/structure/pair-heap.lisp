@@ -37,8 +37,8 @@
 (defmethod compare (x y)
   (< x y))
 
-(defmethod accessor (self)
-  self)
+(defmethod accessor (element)
+  element)
 
 (defmethod make-heap (&key (element nil) (compare #'compare) (accessor #'accessor))
   (let ((tree (make-tree :compare compare :accessor accessor)))
