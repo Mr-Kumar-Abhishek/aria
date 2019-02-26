@@ -2,7 +2,7 @@
 data structures and some trival stuffs in common lisp for my lady UK Aria H. Kanzaki
 
 ## aria.structure.queue
-just a normal queue
+Just a normal queue
 
 ### provides
 - `(defstruct queue)`
@@ -12,10 +12,23 @@ just a normal queue
 - `(defmethod queue-empty-p ((self queue))`
 
 ## aria.structure.miso-queue
-a multi-in-single-out queue
+A multi-in-single-out queue
 
 ### about
-this miso queue is designed for Multi-In-Single-Out situation, the operation `de`(means dequeue) is not thread safe due to it should only be excuted in a single thread
+This miso queue is designed for Multi-In-Single-Out situation, the operation `de`(means dequeue) is not thread safe due to it should only be excuted in a single thread
+
+### provides
+- `(defstruct queue)`
+- `(defun make-queue())`
+- `(defmethod en ((self queue) e))`
+- `(defmethod de ((self queue)))`
+- `(defmethod queue-empty-p ((self queue))`
+
+## aria.structure.mimo-queue
+A multi-in-multi-out queue
+
+### about
+This miso queue is designed for Multi-In-Multi-Out situation, methods `en`, `de`, `queue-empty-p` are all thread safe.
 
 ### provides
 - `(defstruct queue)`
