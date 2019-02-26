@@ -8,6 +8,7 @@
             :components
             ((:file "queue")
              (:file "miso-queue" :depends-on ("queue"))
+             (:file "mimo-queue" :depends-on ("queue" "miso-queue"))
              (:file "pair-heap")))
    (:module "asynchronous" :depends-on ("structure")
             :components
