@@ -69,3 +69,7 @@
                    (wait-on-semaphore semaphore :timeout (/ lack 1000))))
              (wait-on-semaphore semaphore))
          (loop-core-inner scheduler tasks semaphore))))
+
+(defmethod end ((self timer))
+  (end (scheduler self))
+  self)
