@@ -70,7 +70,7 @@
 (defmethod release ((self blocker))
   (setf (end self) t))
 
-(test test-async
+(test scheduler-async
   (setf async (make-count))
   (let ((blocker (make-instance 'blocker)))
     (test-async 1000 (lambda () (release blocker)) async)
@@ -94,7 +94,7 @@
                                                                             (end scheduler)))))))))))))
 
 
-(test test-multi-in
+(test scheduler-multi-in
   (setf multi (make-count))
   (let ((blocker (make-instance 'blocker)))
     (test-multi-in 1000 (lambda () (release blocker)) multi)

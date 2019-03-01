@@ -12,4 +12,7 @@
             :depends-on ("test")
             :components
             ((:file "scheduler")
-             (:file "timer")))))
+             (:file "timer")))
+   (:module "control"
+            :components
+            ((:file "rx")))))
