@@ -34,7 +34,7 @@
                 :accessor observers
                 :type list)))
 
-(defmethod id (x) x)
+(defmethod id (&optional x) x)
 
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
