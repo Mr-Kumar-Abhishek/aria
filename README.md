@@ -1,6 +1,44 @@
 # aria
 data structures and some trival stuffs in common lisp for my lady UK Aria H. Kanzaki
 
+## aria.asynchronous.scheduler
+a scheduler, works in a separate thread, takes tasks into queue and consume task one by one
+
+### provides
+- `(defclass scheduler ())`
+- `(defun gen-scheduler (&key (onclose nil) (name "Anonymous scheduler thread")))`
+- `(defmethod add ((self scheduler) (task function)))`
+- `(defmethod end ((self scheduler)))`
+
+## aria.asynchronous.timer
+a timer based on scheduler, basically used for provide a `settimeout`
+
+### provides
+- `(defclass timer ())`
+- `(defun gen-timer (&key (scheduler (gen-scheduler))))`
+- `(defmethod settimeout ((self timer) (callback function) &optional (milliseconds 0)))`
+- `(defmethod end ((self timer))`
+
+## aria.control.rx
+frp for cl inspired by [reactivex](http://reactivex.io/)
+
+[staltz's introduce of frp](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)
+
+### provides
+- `(defclass observable ())`
+- `(defclass observer ())`
+- `(defclass subject (observer))`
+- `(defmethod onnext ((self observer)))`
+- `(defmethod onfail ((self observer)))`
+- `(defmethod onover ((self observer)))`
+- `(defmethod subscribe ((self observable) (ob observer)))`
+- `(defmethod subscribe ((self observable) (onnext function)))`
+- `(defmethod subscribe ((self subject) (ob observer)))`
+- `(defmethod subscribe ((self subject) (onnext function)))`
+
+### provide operators
+- `(defmethod filter ((self observable) (predicate function)))`
+
 ## aria.structure.queue
 Just a normal queue
 
