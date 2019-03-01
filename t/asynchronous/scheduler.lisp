@@ -4,9 +4,9 @@
   (:use :cl :fiveam)
   (:shadow :count)
   (:import-from :bordeaux-threads
-           :make-thread
-           :join-thread
-           :thread)
+                :make-thread
+                :join-thread
+                :thread)
   (:import-from :atomics
                 :atomic-update)
   (:import-from :aria-test
