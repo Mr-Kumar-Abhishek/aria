@@ -53,6 +53,40 @@
     (is (equal (reverse collector0) (list 0 1 2 3 4 5 6 7 8 9)))
     (is (equal (reverse collector1) (list 0 2 4 6 8 10 12 14 16 18)))))
 
+(test observable-onfail
+  (let ((o (observable
+            (lambda (observer)
+              (funcall (onnext observer) 0)
+              (funcall (onfail observer) "err")
+              (funcall (onnext observer) 1))))
+        (collector))
+    (subscribe o (observer :onnext (lambda (value) (push value collector))
+                           :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list 0 "err")))))
+
+(test observable-error-handler
+  (let ((o (observable
+            (lambda (observer)
+              (funcall (onnext observer) 0)
+              (funcall (onnext observer) 1)
+              (funcall (onnext observer) 2))))
+        (collector))
+    (subscribe o (observer :onnext (lambda (value) (cond ((eq value 1) (error "err")) (t (push value collector))))
+                           :onfail (lambda (reason) (push (simple-condition-format-control reason) collector))))
+    (is (equal (reverse collector) (list 0 "err")))))
+
+(test observable-onover
+  (let ((o (observable
+            (lambda (observer)
+              (funcall (onnext observer) 0)
+              (funcall (onnext observer) 1)
+              (funcall (onover observer))
+              (funcall (onnext observer) 2))))
+        (collector))
+    (subscribe o (observer :onnext (lambda (value) (push value collector))
+                           :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 1 "over")))))
+
 (test filter
   (let ((o (observable
             (lambda (observer)
@@ -60,3 +94,4 @@
         (collector))
     (subscribe (filter o (lambda (x) (eq 0 (mod x 2)))) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 0 2 4 6 8)))))
+
