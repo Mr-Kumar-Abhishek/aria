@@ -39,10 +39,6 @@
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
 
-(defmethod safe ((function function) &rest args)
-  (handler-case (apply function args)
-    (error (reason) (print reason))))
-
 (defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (let ((complete nil))
     (make-instance 'observer
@@ -50,8 +46,8 @@
                              (unless complete
                                (handler-case (funcall onnext value)
                                  (error (reason) (setf complete t) (funcall onfail reason)))))
-                   :onfail (lambda (reason) (unless complete (setf complete t) (safe onfail reason)))
-                   :onover (lambda () (unless complete (setf complete t) (safe onover))))))
+                   :onfail (lambda (reason) (unless complete (setf complete t) (funcall onfail reason)))
+                   :onover (lambda () (unless complete (setf complete t) (funcall onover))))))
 
 (defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (wrap-observer :onnext onnext :onfail onfail :onover onover))
@@ -70,12 +66,12 @@
 (defmethod subscribe ((self observable) (ob observer))
   (funcall (revolver self) ob))
 
+(defmethod subscribe ((self observable) (onnext function))
+  (subscribe self (observer :onnext onnext)))
+
 (defmethod subscribe ((self subject) (ob observer))
   (push ob (observers self))
   self)
-
-(defmethod subscribe ((self observable) (onnext function))
-  (subscribe self (observer :onnext onnext)))
 
 (defmethod subscribe ((self subject) (onnext function))
   (subscribe self (observer :onnext onnext)))
