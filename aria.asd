@@ -13,4 +13,7 @@
    (:module "asynchronous" :depends-on ("structure")
             :components
             ((:file "scheduler")
-             (:file "timer" :depends-on ("scheduler"))))))
+             (:file "timer" :depends-on ("scheduler"))))
+   (:module "control"
+            :components
+            ((:file "rx")))))
