@@ -10,6 +10,10 @@
                 :signal-semaphore)
   (:import-from :aria-test
                 :top)
+  (:import-from :aria.asynchronous.timer
+                :gen-timer
+                :settimeout
+                :cleartimeout)
   (:import-from :aria.control.rx
                 :observable
                 :observer
@@ -18,7 +22,8 @@
                 :onfail
                 :onover
                 :subscribe
-                :filter))
+                :filter
+                :debounce))
 
 (in-package :aria-test.control.rx)
 
@@ -95,3 +100,18 @@
     (subscribe (filter o (lambda (x) (eq 0 (mod x 2)))) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 0 2 4 6 8)))))
 
+(test debounce
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 2) (wait-on-semaphore semaphore)))))
+         (o (observable
+             (lambda (observer)
+               (make-thread (lambda ()
+                              (dotimes (x 10) (sleep 0.001) (funcall (onnext observer) x))
+                              (sleep 0.021)
+                              (dotimes (x 20) (sleep 0.001) (funcall (onnext observer) x)))))))
+         (collector)
+         (timer (gen-timer)))
+    (subscribe (debounce o (lambda (x) (settimeout timer x 20)) #'cleartimeout)
+               (lambda (value) (push value collector) (signal-semaphore semaphore)))
+    (join-thread th)
+    (is (equal (reverse collector) (list 9 19)))))
