@@ -14,7 +14,8 @@
            :mapto
            :each
            :filter
-           :debounce))
+           :debounce
+           :throttle))
 
 (in-package :aria.control.rx)
 
@@ -140,5 +141,27 @@
                           :onover (onover observer))))))
 
 (defmethod throttle ((self observable) (timer function))
-  "timer needs receive a onnext consumer and return a timer cancel handler"
-  (let ((time (get-internal-real-time)))))
+  "timer needs receive a value and return a onservable"
+  (let ((gap)
+        (last1)
+        (last2))
+    (operator self
+              (lambda (observer)
+                (observer :onnext
+                          (lambda (value)
+                            (unless (or gap last1 last2)
+                              (setf last1 (get-internal-real-time))
+                              (setf last2 last1)
+                              (funcall (onnext observer) value)
+                              (subscribe (funcall timer value)
+                                         (lambda (x)
+                                           (declare (ignorable x))
+                                           (let ((now (get-internal-real-time)))
+                                             (setf gap (- now last1))
+                                             (setf last1 now)))))
+                            (let ((now (get-internal-real-time))
+                                  (gap-copy gap))
+                              (if (and gap-copy
+                                       (>= now (+ gap-copy last2)))
+                                  (progn (funcall (onnext observer) value)
+                                         (setf last2 now))))))))))
