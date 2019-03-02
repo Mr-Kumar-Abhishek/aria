@@ -9,6 +9,7 @@
            :onfail
            :onover
            :subscribe
+           :operator
            :filter))
 
 (in-package :aria.control.rx)
@@ -76,11 +77,35 @@
 (defmethod subscribe ((self subject) (onnext function))
   (subscribe self (observer :onnext onnext)))
 
-(defmethod filter ((self observable) (predicate function))
+(defmethod operator ((self observable) (pass function))
+  "pass needs receive a observer and return a observer"
   (make-instance 'observable
                  :revolver
                  (lambda (observer)
-                   (subscribe self (observer :onnext (lambda (value) (if (funcall predicate value)
-                                                                         (funcall (onnext observer) value)))
-                                             :onfail (onfail observer)
-                                             :onover (onover observer))))))
+                   (subscribe self (funcall pass observer)))))
+
+(defmethod filter ((self observable) (predicate function))
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (value) (if (funcall predicate value)
+                                                    (funcall (onnext observer) value)))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
+
+(defmethod debounce ((self observable) (timer function) (clear function))
+  "timer needs receive a onnext consumer and return a timer cancel handler
+   clear needs receive a timer cancel handler"
+  (let ((cancel))
+    (operator self
+              (lambda (observer)
+                (observer :onnext
+                          (lambda (value)
+                            (let ((cancel-handler cancel))
+                              (if (not cancel-handler)
+                                  (setf cancel (funcall timer (lambda ()
+                                                                (setf cancel nil)
+                                                                (funcall (onnext observer) value))))
+                                  (progn (funcall clear cancel-handler)
+                                         (setf cancel (funcall timer (lambda ()
+                                                                       (setf cancel nil)
+                                                                       (funcall (onnext observer) value)))))))))))))
