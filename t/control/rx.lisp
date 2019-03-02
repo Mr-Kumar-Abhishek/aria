@@ -22,6 +22,9 @@
                 :onfail
                 :onover
                 :subscribe
+                :mapper
+                :mapto
+                :each
                 :filter
                 :debounce))
 
@@ -91,6 +94,32 @@
     (subscribe o (observer :onnext (lambda (value) (push value collector))
                            :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list 0 1 "over")))))
+
+(test mapper
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (funcall (onnext observer) x)))))
+        (collector))
+    (subscribe (mapper o (lambda (x) (+ x 100))) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 100 101 102 103 104 105 106 107 108 109)))))
+
+(test mapto
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (funcall (onnext observer) x)))))
+        (collector))
+    (subscribe (mapto o (lambda () 100)) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))
+
+(test each
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (funcall (onnext observer) x)))))
+        (collector0)
+        (collector1))
+    (subscribe (each o (lambda (x) (push (* 2 x) collector0) 100)) (lambda (value) (push value collector1)))
+    (is (equal (reverse collector0) (list 0 2 4 6 8 10 12 14 16 18)))
+    (is (equal (reverse collector1) (list 0 1 2 3 4 5 6 7 8 9)))))
 
 (test filter
   (let ((o (observable
