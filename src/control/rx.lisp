@@ -10,7 +10,8 @@
            :onover
            :subscribe
            :operator
-           :filter))
+           :filter
+           :debounce))
 
 (in-package :aria.control.rx)
 
