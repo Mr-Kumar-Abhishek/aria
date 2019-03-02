@@ -36,9 +36,11 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod subscribe ((self observable) (onnext function)))`
 - `(defmethod subscribe ((self subject) (ob observer)))`
 - `(defmethod subscribe ((self subject) (onnext function)))`
+- `(defmethod operator ((self observable) (pass function)))`
 
 ### provide operators
 - `(defmethod filter ((self observable) (predicate function)))`
+- `(defmethod debounce ((self observable) (timer function) (clear function)))`
 
 ## aria.structure.queue
 Just a normal queue
