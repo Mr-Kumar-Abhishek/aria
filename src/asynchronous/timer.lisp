@@ -22,6 +22,7 @@
   (:export :timer
            :gen-timer
            :settimeout
+           :cleartimeout
            :end))
 
 (in-package :aria.asynchronous.timer)
@@ -47,12 +48,13 @@
   (loop-core (make-instance 'timer :scheduler scheduler)))
 
 (defmethod settimeout ((self timer) (callback function) &optional (milliseconds 0))
-  (let ((start (get-internal-real-time)))
+  (let ((start (get-internal-real-time))
+        (clearable (clearable callback)))
     (add (scheduler self)
          (lambda ()
-           (en (tasks self) (make-task :callable callback :priority (+ start milliseconds)))))
+           (en (tasks self) (make-task :callable (callback clearable) :priority (+ start milliseconds)))))
     (signal-semaphore (semaphore self))
-    self))
+    (cancel clearable)))
 
 (defmethod loop-core ((self timer))
   (loop-core-inner (scheduler self) (tasks self) (semaphore self))
@@ -69,6 +71,23 @@
                    (wait-on-semaphore semaphore :timeout (/ lack 1000))))
              (wait-on-semaphore semaphore))
          (loop-core-inner scheduler tasks semaphore))))
+
+(defclass clearable ()
+  ((callback :initarg :callback
+              :accessor callback
+              :type function)
+   (cancel :initarg :cancel
+           :accessor cancel
+           :type function)))
+
+(defmethod clearable ((callback function))
+  (let ((cancel nil))
+    (make-instance 'clearable
+                   :callback (lambda () (unless cancel (funcall callback)))
+                   :cancel (lambda () (setf cancel t)))))
+
+(defmethod cleartimeout ((clear function))
+  (funcall clear))
 
 (defmethod end ((self timer))
   (end (scheduler self))
