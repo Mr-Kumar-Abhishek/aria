@@ -39,6 +39,9 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod operator ((self observable) (pass function)))`
 
 ### provide operators
+- `(defmethod mapper ((self observable) (function function)))`
+- `(defmethod mapto ((self observable) (supplier function)))`
+- `(defmethod each ((self observable) (consumer function)))`
 - `(defmethod filter ((self observable) (predicate function)))`
 - `(defmethod debounce ((self observable) (timer function) (clear function)))`
 
