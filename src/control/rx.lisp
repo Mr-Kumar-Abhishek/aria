@@ -97,10 +97,10 @@
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
-(defmethod mapto ((self observable) (supplier function))
+(defmethod mapto ((self observable) value)
   (operator self
             (lambda (observer)
-              (observer :onnext (lambda (value) (funcall (onnext observer) (funcall supplier)))
+              (observer :onnext (lambda (x) (declare (ignorable x)) (funcall (onnext observer) value))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
@@ -135,7 +135,9 @@
                                   (progn (funcall clear cancel-handler)
                                          (setf cancel (funcall timer (lambda ()
                                                                        (setf cancel nil)
-                                                                       (funcall (onnext observer) value)))))))))))))
+                                                                       (funcall (onnext observer) value))))))))
+                          :onfail (onfail observer)
+                          :onover (onover observer))))))
 
 (defmethod throttle ((self observable) (timer function))
   "timer needs receive a onnext consumer and return a timer cancel handler"

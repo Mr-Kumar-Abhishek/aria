@@ -108,7 +108,7 @@
             (lambda (observer)
               (dotimes (x 10) (funcall (onnext observer) x)))))
         (collector))
-    (subscribe (mapto o (lambda () 100)) (lambda (value) (push value collector)))
+    (subscribe (mapto o 100) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))
 
 (test each
