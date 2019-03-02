@@ -10,6 +10,9 @@
            :onover
            :subscribe
            :operator
+           :mapper
+           :mapto
+           :each
            :filter
            :debounce))
 
@@ -78,12 +81,35 @@
 (defmethod subscribe ((self subject) (onnext function))
   (subscribe self (observer :onnext onnext)))
 
+(defmethod switchmap ())
+
 (defmethod operator ((self observable) (pass function))
   "pass needs receive a observer and return a observer"
   (make-instance 'observable
                  :revolver
                  (lambda (observer)
                    (subscribe self (funcall pass observer)))))
+
+(defmethod mapper ((self observable) (function function))
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (value) (funcall (onnext observer) (funcall function value)))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
+
+(defmethod mapto ((self observable) (supplier function))
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (value) (funcall (onnext observer) (funcall supplier)))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
+
+(defmethod each ((self observable) (consumer function))
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (value) (funcall consumer value) (funcall (onnext observer) value))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
 
 (defmethod filter ((self observable) (predicate function))
   (operator self
@@ -110,3 +136,7 @@
                                          (setf cancel (funcall timer (lambda ()
                                                                        (setf cancel nil)
                                                                        (funcall (onnext observer) value)))))))))))))
+
+(defmethod throttle ((self observable) (timer function))
+  "timer needs receive a onnext consumer and return a timer cancel handler"
+  (let ((time (get-internal-real-time)))))
