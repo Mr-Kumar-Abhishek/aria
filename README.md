@@ -18,6 +18,7 @@ a timer based on scheduler, basically used for provide a `settimeout`
 - `(defun gen-timer (&key (scheduler (gen-scheduler))))`
 - `(defmethod settimeout ((self timer) (callback function) &optional (milliseconds 0)))`
 - `(defmethod end ((self timer))`
+- `(defmethod cleartimeout ((clear function)))`
 
 ## aria.control.rx
 frp for cl inspired by [reactivex](http://reactivex.io/)
