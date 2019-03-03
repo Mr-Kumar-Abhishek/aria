@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage aria-test.asynchronous.timer
-  (:use :cl :fiveam)
+  (:use :cl :test-interface)
   (:import-from :aria-test
                 :top)
   (:import-from :aria.asynchronous.timer

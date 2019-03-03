@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage aria-test.asynchronous.scheduler
-  (:use :cl :fiveam)
+  (:use :cl :test-interface)
   (:shadow :count)
   (:import-from :bordeaux-threads
                 :make-thread

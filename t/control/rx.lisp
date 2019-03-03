@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage aria-test.control.rx
-  (:use :cl :fiveam)
+  (:use :cl :test-interface)
   (:import-from :bordeaux-threads
                 :make-thread
                 :join-thread
@@ -21,6 +21,9 @@
                 :onnext
                 :onfail
                 :onover
+                :next
+                :fail
+                :over
                 :subscribe
                 :mapper
                 :mapto
@@ -56,7 +59,7 @@
          (th (make-thread (lambda () (dotimes (x 10) (wait-on-semaphore semaphore)))))
          (o (observable
              (lambda (observer)
-               (make-thread (lambda () (dotimes (x 10) (funcall (onnext observer) x)))))))
+               (make-thread (lambda () (dotimes (x 10) (next observer x)))))))
          (collector))
     (subscribe o (observer :onnext (lambda (value) (push value collector) (signal-semaphore semaphore))))
     (join-thread th)
@@ -67,7 +70,7 @@
          (th (make-thread (lambda () (dotimes (x 20) (wait-on-semaphore semaphore)))))
          (o (observable
              (lambda (observer)
-               (make-thread (lambda () (dotimes (x 10) (funcall (onnext observer) x)))))))
+               (make-thread (lambda () (dotimes (x 10) (next observer x)))))))
          (sub (subject))
          (collector0)
          (collector1))
@@ -81,9 +84,9 @@
 (test observable-onfail
   (let ((o (observable
             (lambda (observer)
-              (funcall (onnext observer) 0)
-              (funcall (onfail observer) "err")
-              (funcall (onnext observer) 1))))
+              (next observer 0)
+              (fail observer "err")
+              (next observer 1))))
         (collector))
     (subscribe o (observer :onnext (lambda (value) (push value collector))
                            :onfail (lambda (reason) (push reason collector))))
@@ -92,9 +95,9 @@
 (test observable-error-handler
   (let ((o (observable
             (lambda (observer)
-              (funcall (onnext observer) 0)
-              (funcall (onnext observer) 1)
-              (funcall (onnext observer) 2))))
+              (next observer 0)
+              (next observer 1)
+              (next observer 2))))
         (collector))
     (subscribe o (observer :onnext (lambda (value) (cond ((eq value 1) (error "err")) (t (push value collector))))
                            :onfail (lambda (reason) (push (simple-condition-format-control reason) collector))))
@@ -103,10 +106,10 @@
 (test observable-onover
   (let ((o (observable
             (lambda (observer)
-              (funcall (onnext observer) 0)
-              (funcall (onnext observer) 1)
-              (funcall (onover observer))
-              (funcall (onnext observer) 2))))
+              (next observer 0)
+              (next observer 1)
+              (over observer)
+              (next observer 2))))
         (collector))
     (subscribe o (observer :onnext (lambda (value) (push value collector))
                            :onover (lambda () (push "over" collector))))
@@ -115,7 +118,7 @@
 (test mapper
   (let ((o (observable
             (lambda (observer)
-              (dotimes (x 10) (funcall (onnext observer) x)))))
+              (dotimes (x 10) (next observer x)))))
         (collector))
     (subscribe (mapper o (lambda (x) (+ x 100))) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 100 101 102 103 104 105 106 107 108 109)))))
@@ -123,7 +126,7 @@
 (test mapto
   (let ((o (observable
             (lambda (observer)
-              (dotimes (x 10) (funcall (onnext observer) x)))))
+              (dotimes (x 10) (next observer x)))))
         (collector))
     (subscribe (mapto o 100) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))
@@ -131,7 +134,7 @@
 (test each
   (let ((o (observable
             (lambda (observer)
-              (dotimes (x 10) (funcall (onnext observer) x)))))
+              (dotimes (x 10) (next observer x)))))
         (collector0)
         (collector1))
     (subscribe (each o (lambda (x) (push (* 2 x) collector0) 100)) (lambda (value) (push value collector1)))
@@ -141,7 +144,7 @@
 (test filter
   (let ((o (observable
             (lambda (observer)
-              (dotimes (x 10) (funcall (onnext observer) x)))))
+              (dotimes (x 10) (next observer x)))))
         (collector))
     (subscribe (filter o (lambda (x) (eq 0 (mod x 2)))) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 0 2 4 6 8)))))
@@ -152,9 +155,9 @@
          (o (observable
              (lambda (observer)
                (make-thread (lambda ()
-                              (dotimes (x 10) (sleep 0.001) (funcall (onnext observer) x))
+                              (dotimes (x 10) (sleep 0.001) (next observer x))
                               (sleep 0.021)
-                              (dotimes (x 20) (sleep 0.001) (funcall (onnext observer) x)))))))
+                              (dotimes (x 20) (sleep 0.001) (next observer x)))))))
          (collector)
          (timer (gen-timer)))
     (subscribe (debounce o (lambda (x) (settimeout timer x 20)) #'cleartimeout)
@@ -169,7 +172,7 @@
              (lambda (observer)
                (make-thread (lambda ()
                                  (dotimes (x 7) (sleep 0.01)
-                                          (funcall (onnext observer) x)))))))
+                                          (next observer x)))))))
          (collector)
          (times))
     (subscribe (throttle o (lambda (v)
@@ -179,7 +182,7 @@
                                 (make-thread (lambda ()
                                                (dotimes (x 1)
                                                  (sleep 0.02)
-                                                 (funcall (onnext observer) x))))))))
+                                                 (next observer x))))))))
                (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))
     (join-thread th)
     (is (>= (length collector) 3))
@@ -194,7 +197,7 @@
              (lambda (observer)
                (make-thread (lambda ()
                                  (dotimes (x 7) (sleep 0.01)
-                                          (funcall (onnext observer) x)))))))
+                                          (next observer x)))))))
          (collector))
     (subscribe (throttle o (lambda (v)
                              (declare (ignorable v))
@@ -203,7 +206,7 @@
                                 (make-thread (lambda ()
                                                (dotimes (x 0)
                                                  (sleep 0.02)
-                                                 (funcall (onnext observer) x))))))))
+                                                 (next observer x))))))))
                (lambda (value) (push value collector) (signal-semaphore semaphore)))
     (join-thread th)
     (is (equal (reverse collector) (list 0)))))
@@ -215,7 +218,7 @@
              (lambda (observer)
                (make-thread (lambda ()
                                  (dotimes (x 7) (sleep 0.01)
-                                          (funcall (onnext observer) x)))))))
+                                          (next observer x)))))))
          (collector)
          (times))
     (subscribe (throttletime o 20)
