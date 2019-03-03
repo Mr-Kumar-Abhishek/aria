@@ -156,7 +156,7 @@
                                   (if (>= now (+ gap-copy last2))
                                       (progn (setf last2 now)
                                              (funcall (onnext observer) value)))
-                                  (unless (or gap last1 last2)
+                                  (unless (or last1 last2)
                                     (setf last1 now)
                                     (setf last2 last1)
                                     (funcall (onnext observer) value)
