@@ -8,6 +8,9 @@
            :onnext
            :onfail
            :onover
+           :next
+           :fail
+           :over
            :subscribe
            :operator
            :mapper
@@ -42,6 +45,15 @@
                 :type list)))
 
 (defmethod id (&optional x) x)
+
+(defmethod next ((self observer) value)
+  (funcall (onnext self) value))
+
+(defmethod fail ((self observer) value)
+  (funcall (onfail self) value))
+
+(defmethod over ((self observer))
+  (funcall (onover self)))
 
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
@@ -95,21 +107,21 @@
 (defmethod mapper ((self observable) (function function))
   (operator self
             (lambda (observer)
-              (observer :onnext (lambda (value) (funcall (onnext observer) (funcall function value)))
+              (observer :onnext (lambda (value) (next observer (funcall function value)))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
 (defmethod mapto ((self observable) value)
   (operator self
             (lambda (observer)
-              (observer :onnext (lambda (x) (declare (ignorable x)) (funcall (onnext observer) value))
+              (observer :onnext (lambda (x) (declare (ignorable x)) (next observer value))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
 (defmethod each ((self observable) (consumer function))
   (operator self
             (lambda (observer)
-              (observer :onnext (lambda (value) (funcall consumer value) (funcall (onnext observer) value))
+              (observer :onnext (lambda (value) (funcall consumer value) (next observer value))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
@@ -117,7 +129,7 @@
   (operator self
             (lambda (observer)
               (observer :onnext (lambda (value) (if (funcall predicate value)
-                                                    (funcall (onnext observer) value)))
+                                                    (next observer value)))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
@@ -133,11 +145,11 @@
                               (if (not cancel-handler)
                                   (setf cancel (funcall timer (lambda ()
                                                                 (setf cancel nil)
-                                                                (funcall (onnext observer) value))))
+                                                                (next observer value))))
                                   (progn (funcall clear cancel-handler)
                                          (setf cancel (funcall timer (lambda ()
                                                                        (setf cancel nil)
-                                                                       (funcall (onnext observer) value))))))))
+                                                                       (next observer value))))))))
                           :onfail (onfail observer)
                           :onover (onover observer))))))
 
@@ -155,11 +167,11 @@
                               (if gap-copy
                                   (if (>= now (+ gap-copy last2))
                                       (progn (setf last2 now)
-                                             (funcall (onnext observer) value)))
+                                             (next observer value)))
                                   (unless (or last1 last2)
                                     (setf last1 now)
                                     (setf last2 last1)
-                                    (funcall (onnext observer) value)
+                                    (next observer value)
                                     (subscribe (funcall observablefn value)
                                                (lambda (x)
                                                  (declare (ignorable x))
@@ -178,9 +190,9 @@
                             (let ((now (get-internal-real-time)))
                               (if last
                                   (if (>= now (+ last milliseconds))
-                                      (progn (funcall (onnext observer) value)
+                                      (progn (next observer value)
                                              (setf last now)))
                                   (progn (setf last now)
-                                         (funcall (onnext observer) value)))))
+                                         (next observer value)))))
                           :onfail (onfail observer)
                           :onover (onover observer))))))
