@@ -123,9 +123,9 @@
 (defmethod debounce ((self observable) (timer function) (clear function))
   "timer needs receive a onnext consumer and return a timer cancel handler
    clear needs receive a timer cancel handler"
-  (let ((cancel))
-    (operator self
-              (lambda (observer)
+  (operator self
+            (lambda (observer)
+              (let ((cancel))
                 (observer :onnext
                           (lambda (value)
                             (let ((cancel-handler cancel))
@@ -142,11 +142,11 @@
 
 (defmethod throttle ((self observable) (timer function))
   "timer needs receive a value and return a onservable"
-  (let ((gap)
-        (last1)
-        (last2))
-    (operator self
-              (lambda (observer)
+  (operator self
+            (lambda (observer)
+              (let ((gap)
+                    (last1)
+                    (last2))
                 (observer :onnext
                           (lambda (value)
                             (unless (or gap last1 last2)
