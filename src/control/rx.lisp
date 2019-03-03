@@ -15,7 +15,8 @@
            :each
            :filter
            :debounce
-           :throttle))
+           :throttle
+           :throttletime))
 
 (in-package :aria.control.rx)
 
@@ -140,7 +141,7 @@
                           :onfail (onfail observer)
                           :onover (onover observer))))))
 
-(defmethod throttle ((self observable) (onservablefn function))
+(defmethod throttle ((self observable) (observablefn function))
   "observablefn needs receive a value and return a observable"
   (operator self
             (lambda (observer)
@@ -153,7 +154,7 @@
                               (setf last1 (get-internal-real-time))
                               (setf last2 last1)
                               (funcall (onnext observer) value)
-                              (subscribe (funcall timer value)
+                              (subscribe (funcall observablefn value)
                                          (lambda (x)
                                            (declare (ignorable x))
                                            (let ((now (get-internal-real-time)))
@@ -163,6 +164,23 @@
                                   (gap-copy gap))
                               (if (and gap-copy
                                        (>= now (+ gap-copy last2)))
-                                  (progn (funcall (onnext observer) value)
-                                         (setf last2 now))))))))))
+                                  (progn (setf last2 now)
+                                         (funcall (onnext observer) value)))))
+                          :onfail (onfail observer)
+                          :onover (onover observer))))))
 
+(defmethod throttletime ((self observable) (milliseconds number))
+  (operator self
+            (lambda (observer)
+              (let ((last))
+                (observer :onnext
+                          (lambda (value)
+                            (let ((now (get-internal-real-time)))
+                              (if last
+                                  (if (>= now (+ last milliseconds))
+                                      (progn (funcall (onnext observer) value)
+                                             (setf last now)))
+                                  (progn (setf last now)
+                                         (funcall (onnext observer) value)))))
+                          :onfail (onfail observer)
+                          :onover (onover observer))))))
