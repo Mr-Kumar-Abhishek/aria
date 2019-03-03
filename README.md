@@ -32,6 +32,9 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod onnext ((self observer)))`
 - `(defmethod onfail ((self observer)))`
 - `(defmethod onover ((self observer)))`
+- `(defmethod next ((self observer) value))`
+- `(defmethod fail ((self observer) reason))`
+- `(defmethod over ((self observer)))`
 - `(defmethod subscribe ((self observable) (ob observer)))`
 - `(defmethod subscribe ((self observable) (onnext function)))`
 - `(defmethod subscribe ((self subject) (ob observer)))`
