@@ -49,8 +49,8 @@
 (defmethod next ((self observer) value)
   (funcall (onnext self) value))
 
-(defmethod fail ((self observer) value)
-  (funcall (onfail self) value))
+(defmethod fail ((self observer) reason)
+  (funcall (onfail self) reason))
 
 (defmethod over ((self observer))
   (funcall (onover self)))
