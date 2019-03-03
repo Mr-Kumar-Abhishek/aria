@@ -27,7 +27,8 @@
                 :each
                 :filter
                 :debounce
-                :throttle))
+                :throttle
+                :throttletime))
 
 (in-package :aria-test.control.rx)
 
@@ -163,7 +164,7 @@
 
 (test throttle
   (let* ((semaphore (make-semaphore))
-         (th (make-thread (lambda () (dotimes (x 7) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (th (make-thread (lambda () (dotimes (x 4) (wait-on-semaphore semaphore :timeout 0.2)))))
          (o (observable
              (lambda (observer)
                (make-thread (lambda ()
@@ -182,6 +183,7 @@
                (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))
     (join-thread th)
     (is (>= (length collector) 3))
+    (is (<= (length collector) 4))
     (is (eq (first (reverse collector)) 0))
     (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.02 1000)))))
 
@@ -205,3 +207,21 @@
                (lambda (value) (push value collector) (signal-semaphore semaphore)))
     (join-thread th)
     (is (equal (reverse collector) (list 0)))))
+
+(test throttletime
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 4) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (o (observable
+             (lambda (observer)
+               (make-thread (lambda ()
+                                 (dotimes (x 7) (sleep 0.01)
+                                          (funcall (onnext observer) x)))))))
+         (collector)
+         (times))
+    (subscribe (throttletime o 20)
+               (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))
+    (join-thread th)
+    (is (>= (length collector) 3))
+    (is (<= (length collector) 4))
+    (is (eq (first (reverse collector)) 0))
+    (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.02 1000)))))
