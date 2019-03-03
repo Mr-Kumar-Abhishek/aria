@@ -140,8 +140,8 @@
                           :onfail (onfail observer)
                           :onover (onover observer))))))
 
-(defmethod throttle ((self observable) (timer function))
-  "timer needs receive a value and return a onservable"
+(defmethod throttle ((self observable) (onservablefn function))
+  "onservablefn needs receive a value and return a observable"
   (operator self
             (lambda (observer)
               (let ((gap)

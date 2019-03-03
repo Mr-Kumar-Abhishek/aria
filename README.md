@@ -44,6 +44,7 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod each ((self observable) (consumer function)))`
 - `(defmethod filter ((self observable) (predicate function)))`
 - `(defmethod debounce ((self observable) (timer function) (clear function)))`
+- `(defmethod throttle ((self observable) (onservablefn function)))`
 
 ## aria.structure.queue
 Just a normal queue
