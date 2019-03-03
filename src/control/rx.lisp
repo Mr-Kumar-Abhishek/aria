@@ -141,7 +141,7 @@
                           :onover (onover observer))))))
 
 (defmethod throttle ((self observable) (onservablefn function))
-  "onservablefn needs receive a value and return a observable"
+  "observablefn needs receive a value and return a observable"
   (operator self
             (lambda (observer)
               (let ((gap)
@@ -165,3 +165,4 @@
                                        (>= now (+ gap-copy last2)))
                                   (progn (funcall (onnext observer) value)
                                          (setf last2 now))))))))))
+
