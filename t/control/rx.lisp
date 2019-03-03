@@ -26,7 +26,8 @@
                 :mapto
                 :each
                 :filter
-                :debounce))
+                :debounce
+                :throttle))
 
 (in-package :aria-test.control.rx)
 
@@ -34,12 +35,27 @@
 
 (in-suite control.rx)
 
+(defmethod gaptop ((seq sequence) (compare function))
+  (let ((prev)
+        (top))
+    (map nil
+         (lambda (x)
+           (if prev
+               (let ((diff (- prev x)))
+                 (cond ((not top) (setf top diff))
+                       ((not (funcall compare top diff))
+                        (setf top diff)))))
+           (setf prev x)
+           x)
+         seq)
+    top))
+
 (test subscribe-observable-async
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 10) (wait-on-semaphore semaphore)))))
          (o (observable
              (lambda (observer)
-               (bt:make-thread (lambda () (dotimes (x 10) (funcall (onnext observer) x)))))))
+               (make-thread (lambda () (dotimes (x 10) (funcall (onnext observer) x)))))))
          (collector))
     (subscribe o (observer :onnext (lambda (value) (push value collector) (signal-semaphore semaphore))))
     (join-thread th)
@@ -50,7 +66,7 @@
          (th (make-thread (lambda () (dotimes (x 20) (wait-on-semaphore semaphore)))))
          (o (observable
              (lambda (observer)
-               (bt:make-thread (lambda () (dotimes (x 10) (funcall (onnext observer) x)))))))
+               (make-thread (lambda () (dotimes (x 10) (funcall (onnext observer) x)))))))
          (sub (subject))
          (collector0)
          (collector1))
@@ -144,3 +160,48 @@
                (lambda (value) (push value collector) (signal-semaphore semaphore)))
     (join-thread th)
     (is (equal (reverse collector) (list 9 19)))))
+
+(test throttle
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 7) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (o (observable
+             (lambda (observer)
+               (make-thread (lambda ()
+                                 (dotimes (x 7) (sleep 0.01)
+                                          (funcall (onnext observer) x)))))))
+         (collector)
+         (times))
+    (subscribe (throttle o (lambda (v)
+                             (declare (ignorable v))
+                             (observable
+                              (lambda (observer)
+                                (make-thread (lambda ()
+                                               (dotimes (x 1)
+                                                 (sleep 0.02)
+                                                 (funcall (onnext observer) x))))))))
+               (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))
+    (join-thread th)
+    (is (>= (length collector) 3))
+    (is (eq (first (reverse collector)) 0))
+    (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.02 1000)))))
+
+(test throttle-timer-no-run
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 1) (wait-on-semaphore semaphore)))))
+         (o (observable
+             (lambda (observer)
+               (make-thread (lambda ()
+                                 (dotimes (x 7) (sleep 0.01)
+                                          (funcall (onnext observer) x)))))))
+         (collector))
+    (subscribe (throttle o (lambda (v)
+                             (declare (ignorable v))
+                             (observable
+                              (lambda (observer)
+                                (make-thread (lambda ()
+                                               (dotimes (x 0)
+                                                 (sleep 0.02)
+                                                 (funcall (onnext observer) x))))))))
+               (lambda (value) (push value collector) (signal-semaphore semaphore)))
+    (join-thread th)
+    (is (equal (reverse collector) (list 0)))))
