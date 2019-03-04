@@ -26,7 +26,8 @@
                 :fail
                 :over
                 :subscribe
-                :unsubscribe)
+                :unsubscribe
+                :isunsubscribed)
   (:import-from :aria.control.rx
                 :of
                 :from
@@ -158,6 +159,45 @@
     (subscribe o (observer :onnext (lambda (value) (push value collector))
                            :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list 0 1 "over")))))
+
+(test of
+  (let* ((o (of 1 2 3 "hi" "go"))
+         (collector)
+         (subscription (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                              :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list 1 2 3 "hi" "go" "end")))
+    (is (isunsubscribed subscription))))
+
+(test from
+  (let* ((o (from "hello world"))
+         (collector)
+         (subscription (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                              :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list #\h #\e #\l #\l #\o #\  #\w #\o #\r #\l #\d "end")))
+    (is (isunsubscribed subscription))))
+
+(test range
+  (let* ((o (range 0 10))
+         (collector)
+         (subscription (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                              :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 5 6 7 8 9 "end")))
+    (is (isunsubscribed subscription))))
+
+(test empty
+  (let* ((o (empty))
+         (collector)
+         (subscription (subscribe o (observer :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list "end")))
+    (is (isunsubscribed subscription))))
+
+(test thrown
+  (let* ((o (thrown "fail"))
+         (collector)
+         (subscription (subscribe o (observer :onfail (lambda (reason) (push reason collector))
+                                              :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list "fail")))
+    (is (isunsubscribed subscription))))
 
 (test mapper
   (let ((o (observable
