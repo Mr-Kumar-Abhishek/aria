@@ -305,7 +305,7 @@
                         :onover (onover observer)))))
 
 (defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied))
-  "only take first value which compliance with predicate from next, then call observer.over
+  "only take last value which compliance with predicate from next
    will use a default value if there is no match"
   (operator self
             (lambda (observer)
