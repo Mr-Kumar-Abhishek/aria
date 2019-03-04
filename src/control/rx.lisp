@@ -119,15 +119,27 @@
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
 
+(defclass caslock ()
+  ((lock :initform :free
+         :accessor lock
+         :type keyword)))
+
 (defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
-  (let ((complete nil))
+  (let ((complete)
+        (caslock (make-instance 'caslock)))
     (make-instance 'observer
                    :onnext (lambda (value)
                              (unless complete
                                (handler-case (funcall onnext value)
-                                 (error (reason) (setf complete t) (funcall onfail reason)))))
-                   :onfail (lambda (reason) (unless complete (setf complete t) (funcall onfail reason)))
-                   :onover (lambda () (unless complete (setf complete t) (funcall onover))))))
+                                 (error (reason) (funcall onfail reason)))))
+                   :onfail (lambda (reason)
+                             (if (cas (slot-value caslock 'lock) :free :used)
+                                 (progn (setf complete t)
+                                        (funcall onfail reason))))
+                   :onover (lambda ()
+                             (if (cas (slot-value caslock 'lock) :free :used)
+                                 (progn (setf complete t)
+                                        (funcall onover)))))))
 
 (defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (wrap-observer :onnext onnext :onfail onfail :onover onover))
@@ -157,15 +169,18 @@
 (defmethod subscribe ((self observable) (ob observer))
   (let ((isover)
         (onover (onover ob))
+        (isfail)
+        (onfail (onfail ob))
         (subscription))
-    (setf (onover ob)
-          (lambda ()
-            (setf isover t)
-            (funcall onover)))
+    (setf (onover ob) (lambda () (setf isover t) (funcall onover)))
+    (setf (onfail ob) (lambda (reason) (setf isfail t) (funcall onfail reason)))
     (setf subscription (subscription-pass (funcall (revolver self) ob)))
-    (let ((onover (onover ob)))
-      (setf (onover ob) (lambda () (funcall onover) (unsubscribe subscription)))) ;; method unsubscribe is thread safe
-    (if isover
+    (let ((onover (onover ob))
+          (onfail (onfail ob)))
+      ;; method unsubscribe is thread safe
+      (setf (onover ob) (lambda () (funcall onover) (unsubscribe subscription)))
+      (setf (onfail ob) (lambda (reason) (funcall onfail reason) (unsubscribe subscription))))
+    (if (or isover isfail)
         (unsubscribe subscription))
     subscription))
 
