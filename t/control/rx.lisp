@@ -18,6 +18,8 @@
                 :observable
                 :observer
                 :subject
+                :subscriptionp
+                :unsubscribe
                 :onnext
                 :onfail
                 :onover
@@ -65,6 +67,30 @@
     (subscribe o (observer :onnext (lambda (value) (push value collector) (signal-semaphore semaphore))))
     (join-thread th)
     (is (equal (reverse collector) (list 0 1 2 3 4 5 6 7 8 9)))))
+
+(test subscriptionp
+  (let ((o (observable
+             (lambda (observer)
+               (declare (ignorable observer))))))
+    (is (subscriptionp (subscribe o (observer :onnext (lambda (value) value)))))))
+
+(test subscription-manually
+  (let* ((collector)
+         (o (observable
+             (lambda (observer)
+               (declare (ignorable observer))
+               (lambda () (push "sub" collector))))))
+    (unsubscribe (subscribe o (observer :onover (lambda () (push "over" collector)))))
+    (is (equal (reverse collector) (list "sub")))))
+
+(test subscription-automatically
+  (let* ((collector)
+         (o (observable
+             (lambda (observer)
+               (over observer)
+               (lambda () (push "sub" collector))))))
+    (subscribe o (observer :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list "over" "sub")))))
 
 (test subject
   (let* ((semaphore (make-semaphore))
