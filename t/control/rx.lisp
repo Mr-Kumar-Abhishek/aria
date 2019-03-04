@@ -39,6 +39,9 @@
                 :mapto
                 :each
                 :filter
+                :head
+                :ignores
+                :tail
                 :debounce
                 :throttle
                 :throttletime
@@ -232,6 +235,84 @@
         (collector))
     (subscribe (filter o (lambda (x) (eq 0 (mod x 2)))) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 0 2 4 6 8)))))
+
+(test head
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (head o) (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 1)))))
+
+(test head-precidate
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (head o (lambda (value) (> value 2))) (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 3)))))
+
+(test head-no-exist-error
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (handler-case
+        (subscribe (head o (lambda (value) (> value 4)))
+                   (observer :onnext (lambda (value) (push value collector))
+                             :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
+      (error (reason) (declare (ignorable reason)) (push "handle error" collector)))
+    (is (equal (reverse collector) (list "handle error")))))
+
+(test head-precidate-default
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (head o (lambda (value) (> value 4)) "default")
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
+    (is (equal (reverse collector) (list "default")))))
+
+(test ignores
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (ignores o) (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list)))))
+
+(test ignores-onfail
+  (let ((o (thrown "fail"))
+        (collector))
+    (subscribe (ignores o) (observer :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "fail")))))
+
+(test ignores-onover
+  (let ((o (empty))
+        (collector))
+    (subscribe (ignores o) (observer :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list "over")))))
+
+(test tail
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (tail o) (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 4)))))
+
+(test tail-precidate
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (tail o (lambda (value) (< value 3))) (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 2)))))
+
+(test tail-no-exist-error
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (handler-case
+        (subscribe (tail o (lambda (value) (> value 4)))
+                   (observer :onnext (lambda (value) (push value collector))
+                             :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
+      (error (reason) (declare (ignorable reason)) (push "handle error" collector)))
+    (is (equal (reverse collector) (list "handle error")))))
+
+(test tail-precidate-default
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (tail o (lambda (value) (> value 4)) "default")
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
+    (is (equal (reverse collector) (list "default")))))
 
 (test debounce
   (let* ((semaphore (make-semaphore))
