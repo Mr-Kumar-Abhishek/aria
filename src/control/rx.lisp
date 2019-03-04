@@ -2,7 +2,10 @@
 
 (defpackage aria.control.rx
   (:use :cl)
+  (:import-from :atomics
+                :cas)
   (:export :observable
+           :subscription
            :observer
            :subject
            :onnext
@@ -12,14 +15,22 @@
            :fail
            :over
            :subscribe
+           :unsubscribe
+           :isunsubscribed
            :operator
+           :of
+           :from
+           :range
+           :empty
+           :thrown
            :mapper
            :mapto
            :each
            :filter
            :debounce
            :throttle
-           :throttletime))
+           :throttletime
+           :distinct))
 
 (in-package :aria.control.rx)
 
@@ -27,6 +38,16 @@
   ((revolver :initarg :revolver
              :accessor revolver
              :type function)))
+
+(defclass subscription ()
+  ((onunsubscribe :initarg :onunsubscribe
+                  :accessor onunsubscribe
+                  :type function)
+   (isunsubscribed :initform nil
+                   :accessor isunsubscribed
+                   :type boolean)
+   (locker :initform :free
+           :type keyword)))
 
 (defclass observer ()
   ((onnext :initarg :onnext
@@ -41,8 +62,8 @@
 
 (defclass subject (observer)
   ((observers :initform nil
-                :accessor observers
-                :type list)))
+              :accessor observers
+              :type list)))
 
 (defmethod id (&optional x) x)
 
@@ -82,8 +103,31 @@
     (setf (onover self) (broadcast self #'onover))
     self))
 
+(defmethod subscription-pass (self)
+  (declare (ignorable self))
+  (subscription-pass (lambda ())))
+
+(defmethod subscription-pass ((self function))
+  (let ((unsubscribed))
+    (make-instance 'subscription :onunsubscribe (lambda () (unless unsubscribed (setf unsubscribed t) (funcall self))))))
+
+(defmethod subscription-pass ((self subscription))
+  self)
+
 (defmethod subscribe ((self observable) (ob observer))
-  (funcall (revolver self) ob))
+  (let ((isover)
+        (onover (onover ob))
+        (subscription))
+    (setf (onover ob)
+          (lambda ()
+            (setf isover t)
+            (funcall onover)))
+    (setf subscription (subscription-pass (funcall (revolver self) ob)))
+    (let ((onover (onover ob)))
+      (setf (onover ob) (lambda () (funcall onover) (unsubscribe subscription)))) ;; method unsubscribe is thread safe
+    (if isover
+        (unsubscribe subscription))
+    subscription))
 
 (defmethod subscribe ((self observable) (onnext function))
   (subscribe self (observer :onnext onnext)))
@@ -95,6 +139,11 @@
 (defmethod subscribe ((self subject) (onnext function))
   (subscribe self (observer :onnext onnext)))
 
+(defmethod unsubscribe ((self subscription))
+  (if (cas (slot-value self 'locker) :free :used)
+      (progn (setf (isunsubscribed self) t)
+             (funcall (onunsubscribe self)))))
+
 (defmethod switchmap ())
 
 (defmethod operator ((self observable) (pass function))
@@ -104,6 +153,30 @@
                  (lambda (observer)
                    (subscribe self (funcall pass observer)))))
 
+;; operators
+;; operators.creation
+(defmethod of (&rest rest)
+  (observable (lambda (observer)
+                (loop for x in rest do (next observer x))
+                (over observer))))
+
+(defmethod from ((seq sequence))
+  (observable (lambda (observer)
+                (map nil (lambda (x) (next observer x)) seq)
+                (over observer))))
+
+(defmethod range ((start number) (count number))
+  (observable (lambda (observer)
+                (loop for x from start to (+ start count -1) do (next observer x)))))
+
+(defmethod empty ()
+  (observable (lambda (observer) (over observer))))
+
+(defmethod thrown (reason)
+  (observable (lambda (observer)
+                (fail observer reason))))
+
+;; operators.filtering
 (defmethod mapper ((self observable) (function function))
   (operator self
             (lambda (observer)
@@ -178,8 +251,8 @@
                                                  (let ((now (get-internal-real-time)))
                                                    (setf gap (- now last1))
                                                    (setf last1 now))))))))
-                         :onfail (onfail observer)
-                         :onover (onover observer))))))
+                          :onfail (onfail observer)
+                          :onover (onover observer))))))
 
 (defmethod throttletime ((self observable) (milliseconds number))
   (operator self
@@ -196,3 +269,21 @@
                                          (next observer value)))))
                           :onfail (onfail observer)
                           :onover (onover observer))))))
+
+(defmethod distinct ((self observable) &optional (compare #'eq))
+  "distinct won't send value to next until it change
+   compare receive two value and return boolean, use eq as default compare method"
+  (operator self
+            (lambda (observer)
+              (let ((last)
+                    (init t))
+                (observer :onnext
+                          (lambda (value)
+                            (if init
+                                (progn (setf init nil)
+                                       (setf last value)
+                                       (next observer value))
+                                (unless (funcall compare last value)
+                                  (setf last value)
+                                  (next observer value)))))))))
+
