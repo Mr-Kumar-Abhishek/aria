@@ -41,8 +41,7 @@
           :accessor pause
           :type boolean)
    (pauselock :initform :free
-          :accessor pauselock
-          :type keyword))
+              :type keyword))
   (:documentation "scheduler based on a functional lock-free"))
 
 (defmethod end-check ((signum function) (onclose null))
