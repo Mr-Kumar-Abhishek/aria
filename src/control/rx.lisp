@@ -124,6 +124,11 @@
          :accessor lock
          :type keyword)))
 
+(defmacro caslock-once (caslock flagplace &rest expr)
+  `(if (cas (slot-value ,caslock 'lock) :free :used)
+       (progn (setf ,flagplace t)
+              ,@expr)))
+
 (defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (let ((complete)
         (caslock (make-instance 'caslock)))
@@ -131,15 +136,11 @@
                    :onnext (lambda (value)
                              (unless complete
                                (handler-case (funcall onnext value)
-                                 (error (reason) (funcall onfail reason)))))
+                                 (error (reason) (caslock-once caslock complete (funcall onfail reason))))))
                    :onfail (lambda (reason)
-                             (if (cas (slot-value caslock 'lock) :free :used)
-                                 (progn (setf complete t)
-                                        (funcall onfail reason))))
+                             (caslock-once caslock complete (funcall onfail reason)))
                    :onover (lambda ()
-                             (if (cas (slot-value caslock 'lock) :free :used)
-                                 (progn (setf complete t)
-                                        (funcall onover)))))))
+                             (caslock-once caslock complete (funcall onover))))))
 
 (defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (wrap-observer :onnext onnext :onfail onfail :onover onover))
