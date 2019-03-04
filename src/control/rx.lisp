@@ -42,7 +42,7 @@
 (defclass subscription ()
   ((onunsubscribe :initarg :onunsubscribe
                   :accessor onunsubscribe
-                  :type function)
+                  :type (or null function))
    (isunsubscribed :initform nil
                    :accessor isunsubscribed
                    :type boolean)
@@ -105,7 +105,7 @@
 
 (defmethod subscription-pass (self)
   (declare (ignorable self))
-  (subscription-pass (lambda ())))
+  (make-instance 'subscription :onunsubscribe nil))
 
 (defmethod subscription-pass ((self function))
   (let ((unsubscribed))
@@ -142,7 +142,9 @@
 (defmethod unsubscribe ((self subscription))
   (if (cas (slot-value self 'locker) :free :used)
       (progn (setf (isunsubscribed self) t)
-             (funcall (onunsubscribe self)))))
+             (let ((onunsubscribe (onunsubscribe self)))
+               (if onunsubscribe
+                   (funcall onunsubscribe))))))
 
 (defmethod switchmap ())
 
