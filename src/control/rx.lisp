@@ -225,14 +225,14 @@
 
 (defmethod range ((start number) (count number))
   (observable (lambda (observer)
-                (loop for x from start to (+ start count -1) do (next observer x)))))
+                (loop for x from start to (+ start count -1) do (next observer x))
+                (over observer))))
 
 (defmethod empty ()
   (observable (lambda (observer) (over observer))))
 
 (defmethod thrown (reason)
-  (observable (lambda (observer)
-                (fail observer reason))))
+  (observable (lambda (observer) (fail observer reason))))
 
 ;; operators.filtering
 (defmethod mapper ((self observable) (function function))
