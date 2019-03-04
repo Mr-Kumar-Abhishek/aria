@@ -31,7 +31,8 @@
                 :filter
                 :debounce
                 :throttle
-                :throttletime))
+                :throttletime
+                :distinct))
 
 (in-package :aria-test.control.rx)
 
@@ -228,3 +229,32 @@
     (is (<= (length collector) 4))
     (is (eq (first (reverse collector)) 0))
     (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.02 1000)))))
+
+(test distinct
+  (let* ((o (observable
+             (lambda (observer)
+               (next observer 0)
+               (next observer 0)
+               (next observer 2)
+               (next observer 2)
+               (next observer 0)
+               (next observer 2))))
+         (collector))
+    (subscribe (distinct o)
+               (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 0 2 0 2)))))
+
+(test distinct-compare
+  (let* ((o (observable
+             (lambda (observer)
+               (next observer (lambda () 0))
+               (next observer (lambda () 0))
+               (next observer (lambda () 2))
+               (next observer (lambda () 2))
+               (next observer (lambda () 0))
+               (next observer (lambda () 2)))))
+         (collector))
+    (subscribe (distinct o (lambda (x y) (eq (funcall x) (funcall y))))
+               (lambda (value) (push value collector)))
+    (is (equal (map 'list (lambda (supplier) (funcall supplier)) (reverse collector)) (list 0 2 0 2)))))
+
