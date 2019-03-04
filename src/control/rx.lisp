@@ -35,6 +35,9 @@
            :mapto
            :each
            :filter
+           :head
+           :ignores
+           :tail
            :debounce
            :throttle
            :throttletime
@@ -124,6 +127,9 @@
          :accessor lock
          :type keyword)))
 
+(defmethod caslock ()
+  (make-instance 'caslock))
+
 (defmacro caslock-once (caslock flagplace &rest expr)
   `(if (cas (slot-value ,caslock 'lock) :free :used)
        (progn (setf ,flagplace t)
@@ -131,7 +137,7 @@
 
 (defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (let ((complete)
-        (caslock (make-instance 'caslock)))
+        (caslock (caslock)))
     (make-instance 'observer
                    :onnext (lambda (value)
                              (unless complete
@@ -263,6 +269,62 @@
                                                     (next observer value)))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
+
+(defmethod tautology (value)
+  (declare (ignorable value))
+  t)
+
+(defmethod head ((self observable) &optional (predicate #'tautology) (default nil default-supplied))
+  "only take first value which compliance with predicate from next, then call observer.over
+   will use a default value if there is no match"
+  (operator self
+            (lambda (observer)
+              (let ((firstlock (caslock))
+                    (hasfirst))
+                (observer :onnext
+                          (lambda (value)
+                            (if (funcall predicate value)
+                                (if (cas (slot-value firstlock 'lock) :free :used)
+                                    (progn (setf hasfirst t)
+                                           (next observer value)
+                                           (over observer)))))
+                          :onfail (onfail observer)
+                          :onover (lambda ()
+                                    (unless hasfirst
+                                        (if default-supplied
+                                            (next observer default)
+                                            (error "first value not exist")))
+                                    (onover observer)))))))
+
+(defmethod ignores ((self observable))
+  "ignore all values from next, only receive fail and over"
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (value) (declare (ignorable value)))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
+
+(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied))
+  "only take first value which compliance with predicate from next, then call observer.over
+   will use a default value if there is no match"
+  (operator self
+            (lambda (observer)
+              (let ((last)
+                    (haslast))
+                (observer :onnext
+                          (lambda (value)
+                            (if (funcall predicate value)
+                                (progn (setf last value)
+                                       (unless haslast
+                                         (setf haslast t)))))
+                          :onfail (onfail observer)
+                          :onover (lambda ()
+                                    (if haslast
+                                        (next observer last)
+                                        (if default-supplied
+                                            (next observer default)
+                                            (error "tail value not exist")))
+                                    (over observer)))))))
 
 (defmethod debounce ((self observable) (timer function) (clear function))
   "timer needs receive a onnext consumer and return a timer cancel handler
