@@ -19,7 +19,6 @@
                 :observer
                 :subject
                 :subscriptionp
-                :unsubscribe
                 :onnext
                 :onfail
                 :onover
@@ -27,6 +26,14 @@
                 :fail
                 :over
                 :subscribe
+                :unsubscribe)
+  (:import-from :aria.control.rx
+                :of
+                :from
+                :range
+                :empty
+                :thrown)
+  (:import-from :aria.control.rx
                 :mapper
                 :mapto
                 :each
@@ -74,23 +81,33 @@
                (declare (ignorable observer))))))
     (is (subscriptionp (subscribe o (observer :onnext (lambda (value) value)))))))
 
-(test subscription-manually
+(test subscription-manually-unsubscribe
   (let* ((collector)
          (o (observable
              (lambda (observer)
                (declare (ignorable observer))
-               (lambda () (push "sub" collector))))))
-    (unsubscribe (subscribe o (observer :onover (lambda () (push "over" collector)))))
-    (is (equal (reverse collector) (list "sub")))))
+               (lambda () (push "unsub" collector))))))
+    (unsubscribe (subscribe o (observer :onfail (lambda () (push "fail" collector))
+                                        :onover (lambda (reason) (push reason collector)))))
+    (is (equal (reverse collector) (list "unsub")))))
 
-(test subscription-automatically
+(test subscription-automatically-unsubscribe-onover
   (let* ((collector)
          (o (observable
              (lambda (observer)
                (over observer)
-               (lambda () (push "sub" collector))))))
+               (lambda () (push "unsub" collector))))))
     (subscribe o (observer :onover (lambda () (push "over" collector))))
-    (is (equal (reverse collector) (list "over" "sub")))))
+    (is (equal (reverse collector) (list "over" "unsub")))))
+
+(test subscription-automatically-unsubscribe-onfail
+  (let* ((collector)
+         (o (observable
+             (lambda (observer)
+               (fail observer "fail")
+               (lambda () (push "unsub" collector))))))
+    (subscribe o (observer :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "fail" "unsub")))))
 
 (test subject
   (let* ((semaphore (make-semaphore))
