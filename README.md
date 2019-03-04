@@ -61,8 +61,10 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod subscribe ((self subject) (ob observer)))`
 - `(defmethod subscribe ((self subject) (onnext function)))`
 
-### provide operators
+### provide for customize operator
 - `(defmethod operator ((self observable) (pass function)))`
+
+### provide operators
 
 #### creation
 - `(defmethod of (&rest rest))`
