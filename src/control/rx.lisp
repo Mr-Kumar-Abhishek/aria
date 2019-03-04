@@ -5,29 +5,33 @@
   (:import-from :atomics
                 :cas)
   (:export :observable
-           :subscription
-           :observer
-           :subject
            :observablep
+           :subscribe)
+  (:export :subscription
            :subscriptionp
+           :unsubscribe
+           :isunsubscribed)
+  (:export :observer
            :observerp
-           :subjectp
            :onnext
            :onfail
            :onover
            :next
            :fail
-           :over
-           :subscribe
-           :unsubscribe
-           :isunsubscribed
-           :operator
-           :of
+           :over)
+  (:export :subject
+           :subjectp
+           :subscribe)
+  ;; help customize operators
+  (:export :operator)
+  ;; creation operators
+  (:export :of
            :from
            :range
            :empty
-           :thrown
-           :mapper
+           :thrown)
+  ;; filtering operators
+  (:export :mapper
            :mapto
            :each
            :filter
