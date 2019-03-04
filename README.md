@@ -26,22 +26,52 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 [staltz's introduce of frp](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)
 
 ### provides
+
+#### observable
 - `(defclass observable ())`
+- `(defmethod observablep ((self observable)))`
+- `(defmethod observablep (self))`
+- `(defmethod observable ((revolver function)))`
+- `(defmethod subscribe ((self observable) (ob observer)))`
+- `(defmethod subscribe ((self observable) (onnext function)))`
+
+#### subscription
+- `(defclass subscription ())`
+- `(defmethod subscriptionp ((self subscription)))`
+- `(defmethod subscriptionp (self))`
+- `(defmethod unsubscribe ((self subscription)))`
+- `(defmethod isunsubscribed ((self subsription)))`
+
+#### observer
 - `(defclass observer ())`
-- `(defclass subject (observer))`
+- `(defmethod observerp ((self observer)))`
+- `(defmethod observerp (self))`
+- `(defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id)))`
 - `(defmethod onnext ((self observer)))`
 - `(defmethod onfail ((self observer)))`
 - `(defmethod onover ((self observer)))`
 - `(defmethod next ((self observer) value))`
 - `(defmethod fail ((self observer) reason))`
 - `(defmethod over ((self observer)))`
-- `(defmethod subscribe ((self observable) (ob observer)))`
-- `(defmethod subscribe ((self observable) (onnext function)))`
+
+#### subject
+- `(defclass subject (observer))`
+- `(defmethod subjectp ((self subject)))`
+- `(defmethod subjectp (self))`
 - `(defmethod subscribe ((self subject) (ob observer)))`
 - `(defmethod subscribe ((self subject) (onnext function)))`
-- `(defmethod operator ((self observable) (pass function)))`
 
 ### provide operators
+- `(defmethod operator ((self observable) (pass function)))`
+
+#### creation
+- `(defmethod of (&rest rest))`
+- `(defmethod from ((seq sequence)))`
+- `(defmethod range ((start number) (count number)))`
+- `(defmethod empty ())`
+- `(defmethod thrown (reason))`
+
+#### filtering
 - `(defmethod mapper ((self observable) (function function)))`
 - `(defmethod mapto ((self observable) value))`
 - `(defmethod each ((self observable) (consumer function)))`
@@ -49,6 +79,7 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod debounce ((self observable) (timer function) (clear function)))`
 - `(defmethod throttle ((self observable) (observablefn function)))`
 - `(defmethod throttletime ((self observable) (milliseconds number)))`
+- `(defmethod distinct ((self observable) &optional (compare #'eq)))`
 
 ## aria.structure.queue
 Just a normal queue
