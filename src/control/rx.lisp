@@ -8,6 +8,10 @@
            :subscription
            :observer
            :subject
+           :observablep
+           :subscriptionp
+           :observerp
+           :subjectp
            :onnext
            :onfail
            :onover
@@ -64,6 +68,38 @@
   ((observers :initform nil
               :accessor observers
               :type list)))
+
+(defmethod observablep ((self observable))
+  (declare (ignorable self))
+  t)
+
+(defmethod observablep (self)
+  (declare (ignorable self))
+  nil)
+
+(defmethod subscriptionp ((self subscription))
+  (declare (ignorable self))
+  t)
+
+(defmethod subscriptionp (self)
+  (declare (ignorable self))
+  nil)
+
+(defmethod observerp ((self observer))
+  (declare (ignorable self))
+  t)
+
+(defmethod observerp (self)
+  (declare (ignorable self))
+  nil)
+
+(defmethod subjectp ((self subject))
+  (declare (ignorable self))
+  t)
+
+(defmethod subjectp (self)
+  (declare (ignorable self))
+  nil)
 
 (defmethod id (&optional x) x)
 
