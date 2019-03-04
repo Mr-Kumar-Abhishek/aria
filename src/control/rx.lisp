@@ -54,8 +54,8 @@
    (isunsubscribed :initform nil
                    :accessor isunsubscribed
                    :type boolean)
-   (locker :initform :free
-           :type keyword)))
+   (lock :initform :free
+         :type keyword)))
 
 (defclass observer ()
   ((onnext :initarg :onnext
@@ -180,7 +180,7 @@
   (subscribe self (observer :onnext onnext)))
 
 (defmethod unsubscribe ((self subscription))
-  (if (cas (slot-value self 'locker) :free :used)
+  (if (cas (slot-value self 'lock) :free :used)
       (progn (setf (isunsubscribed self) t)
              (let ((onunsubscribe (onunsubscribe self)))
                (if onunsubscribe
