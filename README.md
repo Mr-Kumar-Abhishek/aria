@@ -78,6 +78,9 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod mapto ((self observable) value))`
 - `(defmethod each ((self observable) (consumer function)))`
 - `(defmethod filter ((self observable) (predicate function)))`
+- `(defmethod head ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
+- `(defmethod ignores ((self observable)))`
+- `(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod debounce ((self observable) (timer function) (clear function)))`
 - `(defmethod throttle ((self observable) (observablefn function)))`
 - `(defmethod throttletime ((self observable) (milliseconds number)))`
