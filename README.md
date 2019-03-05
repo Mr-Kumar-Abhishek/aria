@@ -63,6 +63,7 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 
 ### provide for customize operator
 - `(defmethod operator ((self observable) (pass function)))`
+- `(defmethod operator-auto-unsubcribe ((self observable) (pass function)))`
 
 ### provide operators
 
@@ -74,17 +75,19 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod thrown (reason))`
 
 #### filtering
-- `(defmethod mapper ((self observable) (function function)))`
-- `(defmethod mapto ((self observable) value))`
+- `(defmethod debounce ((self observable) (timer function) (clear function)))`
+- `(defmethod distinct ((self observable) &optional (compare #'eq)))`
 - `(defmethod each ((self observable) (consumer function)))`
 - `(defmethod filter ((self observable) (predicate function)))`
 - `(defmethod head ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod ignores ((self observable)))`
+- `(defmethod mapper ((self observable) (function function)))`
+- `(defmethod mapto ((self observable) value)))`
+- `(defmethod sample ((self observable) (sampler observable)))`
+- `(defmethod take ((self observable) (count number)))`
 - `(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
-- `(defmethod debounce ((self observable) (timer function) (clear function)))`
 - `(defmethod throttle ((self observable) (observablefn function)))`
 - `(defmethod throttletime ((self observable) (milliseconds number)))`
-- `(defmethod distinct ((self observable) &optional (compare #'eq)))`
 
 ## aria.structure.queue
 Just a normal queue
