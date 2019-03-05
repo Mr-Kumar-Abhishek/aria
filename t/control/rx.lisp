@@ -284,7 +284,7 @@
     (subscribe (head o (lambda (value) (> value 2))) (observer :onnext (lambda (value) (push value collector))))
     (is (equal (reverse collector) (list 3)))))
 
-(test head-no-exist-error
+(test head-no-exist-fail
   (let ((o (of 1 2 3 4))
         (collector))
     (handler-case
@@ -292,7 +292,7 @@
                    (observer :onnext (lambda (value) (push value collector))
                              :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
       (error (reason) (declare (ignorable reason)) (push "handle error" collector)))
-    (is (equal (reverse collector) (list "handle error")))))
+    (is (equal (reverse collector) (list "fail")))))
 
 (test head-precidate-default
   (let ((o (of 1 2 3 4))
@@ -410,7 +410,7 @@
     (subscribe (tail o (lambda (value) (< value 3))) (observer :onnext (lambda (value) (push value collector))))
     (is (equal (reverse collector) (list 2)))))
 
-(test tail-no-exist-error
+(test tail-no-exist-fail
   (let ((o (of 1 2 3 4))
         (collector))
     (handler-case
@@ -418,7 +418,7 @@
                    (observer :onnext (lambda (value) (push value collector))
                              :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
       (error (reason) (declare (ignorable reason)) (push "handle error" collector)))
-    (is (equal (reverse collector) (list "handle error")))))
+    (is (equal (reverse collector) (list "fail")))))
 
 (test tail-precidate-default
   (let ((o (of 1 2 3 4))
