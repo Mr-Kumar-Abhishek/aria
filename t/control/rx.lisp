@@ -28,25 +28,28 @@
                 :subscribe
                 :unsubscribe
                 :isunsubscribed)
+  ;; creation operators
   (:import-from :aria.control.rx
                 :of
                 :from
                 :range
                 :empty
                 :thrown)
+  ;; filtering operators
   (:import-from :aria.control.rx
-                :mapper
-                :mapto
+                :distinct
+                :debounce
                 :each
                 :filter
                 :head
                 :ignores
-                :tail
+                :mapper
+                :mapto
                 :sample
-                :debounce
+                :tail
+                :take
                 :throttle
-                :throttletime
-                :distinct))
+                :throttletime))
 
 (in-package :aria-test.control.rx)
 
@@ -164,6 +167,8 @@
                            :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list 0 1 "over")))))
 
+;; creation operators
+
 (test of
   (let* ((o (of 1 2 3 "hi" "go"))
          (collector)
@@ -203,21 +208,51 @@
     (is (equal (reverse collector) (list "fail")))
     (is (isunsubscribed subscription))))
 
-(test mapper
-  (let ((o (observable
-            (lambda (observer)
-              (dotimes (x 10) (next observer x)))))
-        (collector))
-    (subscribe (mapper o (lambda (x) (+ x 100))) (lambda (value) (push value collector)))
-    (is (equal (reverse collector) (list 100 101 102 103 104 105 106 107 108 109)))))
+;; filtering operators
 
-(test mapto
-  (let ((o (observable
-            (lambda (observer)
-              (dotimes (x 10) (next observer x)))))
-        (collector))
-    (subscribe (mapto o 100) (lambda (value) (push value collector)))
-    (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))
+(test debounce
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 2) (wait-on-semaphore semaphore)))))
+         (o (observable
+             (lambda (observer)
+               (make-thread (lambda ()
+                              (dotimes (x 10) (sleep 0.001) (next observer x))
+                              (sleep 0.021)
+                              (dotimes (x 20) (sleep 0.001) (next observer x)))))))
+         (collector)
+         (timer (gen-timer)))
+    (subscribe (debounce o (lambda (x) (settimeout timer x 20)) #'cleartimeout)
+               (lambda (value) (push value collector) (signal-semaphore semaphore)))
+    (join-thread th)
+    (is (equal (reverse collector) (list 9 19)))))
+
+(test distinct
+  (let* ((o (observable
+             (lambda (observer)
+               (next observer 0)
+               (next observer 0)
+               (next observer 2)
+               (next observer 2)
+               (next observer 0)
+               (next observer 2))))
+         (collector))
+    (subscribe (distinct o)
+               (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 0 2 0 2)))))
+
+(test distinct-compare
+  (let* ((o (observable
+             (lambda (observer)
+               (next observer (lambda () 0))
+               (next observer (lambda () 0))
+               (next observer (lambda () 2))
+               (next observer (lambda () 2))
+               (next observer (lambda () 0))
+               (next observer (lambda () 2)))))
+         (collector))
+    (subscribe (distinct o (lambda (x y) (eq (funcall x) (funcall y))))
+               (lambda (value) (push value collector)))
+    (is (equal (map 'list (lambda (supplier) (funcall supplier)) (reverse collector)) (list 0 2 0 2)))))
 
 (test each
   (let ((o (observable
@@ -285,35 +320,21 @@
     (subscribe (ignores o) (observer :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list "over")))))
 
-(test tail
-  (let ((o (of 1 2 3 4))
+(test mapper
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (next observer x)))))
         (collector))
-    (subscribe (tail o) (observer :onnext (lambda (value) (push value collector))))
-    (is (equal (reverse collector) (list 4)))))
+    (subscribe (mapper o (lambda (x) (+ x 100))) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 100 101 102 103 104 105 106 107 108 109)))))
 
-(test tail-precidate
-  (let ((o (of 1 2 3 4))
+(test mapto
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (next observer x)))))
         (collector))
-    (subscribe (tail o (lambda (value) (< value 3))) (observer :onnext (lambda (value) (push value collector))))
-    (is (equal (reverse collector) (list 2)))))
-
-(test tail-no-exist-error
-  (let ((o (of 1 2 3 4))
-        (collector))
-    (handler-case
-        (subscribe (tail o (lambda (value) (> value 4)))
-                   (observer :onnext (lambda (value) (push value collector))
-                             :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
-      (error (reason) (declare (ignorable reason)) (push "handle error" collector)))
-    (is (equal (reverse collector) (list "handle error")))))
-
-(test tail-precidate-default
-  (let ((o (of 1 2 3 4))
-        (collector))
-    (subscribe (tail o (lambda (value) (> value 4)) "default")
-               (observer :onnext (lambda (value) (push value collector))
-                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
-    (is (equal (reverse collector) (list "default")))))
+    (subscribe (mapto o 100) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))
 
 (test sample
   (let* ((event1)
@@ -377,21 +398,35 @@
     (unsubscribe (subscribe o (observer :onover (lambda () (push "over" collector)))))
     (is (equal (reverse collector) (list "unsub source" "unsub sampler")))))
 
-(test debounce
-  (let* ((semaphore (make-semaphore))
-         (th (make-thread (lambda () (dotimes (x 2) (wait-on-semaphore semaphore)))))
-         (o (observable
-             (lambda (observer)
-               (make-thread (lambda ()
-                              (dotimes (x 10) (sleep 0.001) (next observer x))
-                              (sleep 0.021)
-                              (dotimes (x 20) (sleep 0.001) (next observer x)))))))
-         (collector)
-         (timer (gen-timer)))
-    (subscribe (debounce o (lambda (x) (settimeout timer x 20)) #'cleartimeout)
-               (lambda (value) (push value collector) (signal-semaphore semaphore)))
-    (join-thread th)
-    (is (equal (reverse collector) (list 9 19)))))
+(test tail
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (tail o) (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 4)))))
+
+(test tail-precidate
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (tail o (lambda (value) (< value 3))) (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 2)))))
+
+(test tail-no-exist-error
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (handler-case
+        (subscribe (tail o (lambda (value) (> value 4)))
+                   (observer :onnext (lambda (value) (push value collector))
+                             :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
+      (error (reason) (declare (ignorable reason)) (push "handle error" collector)))
+    (is (equal (reverse collector) (list "handle error")))))
+
+(test tail-precidate-default
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (tail o (lambda (value) (> value 4)) "default")
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
+    (is (equal (reverse collector) (list "default")))))
 
 (test throttle
   (let* ((semaphore (make-semaphore))
@@ -429,8 +464,25 @@
     (is (equal (reverse collector) (list "gen 0" 0 "receive 0" "send 0" "gen 1" "send 1" "unsub 0"
                                          "gen 2" 2 "receive 2" "send 0" "gen 3" "send 1" "unsub 2"
                                          "gen 4" 4 "receive 4" "send 0" "gen 5" "send 1" "unsub 4")))
-    (print (gaptop times (lambda (x y) (< x y))))
     (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.06 1000)))))
+
+(test throttletime
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 4) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (o (observable
+             (lambda (observer)
+               (make-thread (lambda ()
+                                 (dotimes (x 7) (sleep 0.01)
+                                          (next observer x)))))))
+         (collector)
+         (times))
+    (subscribe (throttletime o 20)
+               (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))
+    (join-thread th)
+    (is (>= (length collector) 3))
+    (is (<= (length collector) 4))
+    (is (eq (first (reverse collector)) 0))
+    (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.02 1000)))))
 
 (test throttle-timer-no-run
   (let* ((semaphore (make-semaphore))
@@ -452,50 +504,3 @@
                (lambda (value) (push value collector) (signal-semaphore semaphore)))
     (join-thread th)
     (is (equal (reverse collector) (list 0)))))
-
-(test throttletime
-  (let* ((semaphore (make-semaphore))
-         (th (make-thread (lambda () (dotimes (x 4) (wait-on-semaphore semaphore :timeout 0.2)))))
-         (o (observable
-             (lambda (observer)
-               (make-thread (lambda ()
-                                 (dotimes (x 7) (sleep 0.01)
-                                          (next observer x)))))))
-         (collector)
-         (times))
-    (subscribe (throttletime o 20)
-               (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))
-    (join-thread th)
-    (is (>= (length collector) 3))
-    (is (<= (length collector) 4))
-    (is (eq (first (reverse collector)) 0))
-    (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.02 1000)))))
-
-(test distinct
-  (let* ((o (observable
-             (lambda (observer)
-               (next observer 0)
-               (next observer 0)
-               (next observer 2)
-               (next observer 2)
-               (next observer 0)
-               (next observer 2))))
-         (collector))
-    (subscribe (distinct o)
-               (lambda (value) (push value collector)))
-    (is (equal (reverse collector) (list 0 2 0 2)))))
-
-(test distinct-compare
-  (let* ((o (observable
-             (lambda (observer)
-               (next observer (lambda () 0))
-               (next observer (lambda () 0))
-               (next observer (lambda () 2))
-               (next observer (lambda () 2))
-               (next observer (lambda () 0))
-               (next observer (lambda () 2)))))
-         (collector))
-    (subscribe (distinct o (lambda (x y) (eq (funcall x) (funcall y))))
-               (lambda (value) (push value collector)))
-    (is (equal (map 'list (lambda (supplier) (funcall supplier)) (reverse collector)) (list 0 2 0 2)))))
-
