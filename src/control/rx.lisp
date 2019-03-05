@@ -355,8 +355,8 @@
                                     (unless hasfirst
                                         (if default-supplied
                                             (next observer default)
-                                            (error "first value not exist")))
-                                    (onover observer)))))))
+                                            (fail observer "first value not exist")))
+                                    (over observer)))))))
 
 (defmethod ignores ((self observable))
   "ignore all values from next, only receive fail and over"
@@ -415,7 +415,7 @@
                                         (next observer last)
                                         (if default-supplied
                                             (next observer default)
-                                            (error "tail value not exist")))
+                                            (fail observer "tail value not exist")))
                                     (over observer)))))))
 
 (defmethod take ((self observable) (count number))
