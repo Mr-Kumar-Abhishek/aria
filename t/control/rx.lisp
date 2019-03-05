@@ -428,6 +428,34 @@
                          :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))))
     (is (equal (reverse collector) (list "default")))))
 
+(test take
+  (let ((o (of 1 2 3 4))
+        (collector))
+    (subscribe (take o 2)
+               (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 1 2)))))
+
+(test take-automatically-unsubscribe
+  (let* ((end)
+         (collector)
+         (semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 1) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (o (observable (lambda (observer)
+                          (make-thread (lambda ()
+                                         (loop for x from 0
+                                            while (not end)
+                                            do (next observer x)
+                                              (sleep 0.005))))
+                          (lambda ()
+                            (setf end t)
+                            (push "source unsub" collector)
+                            (signal-semaphore semaphore))))))
+    (subscribe (take o 2)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (join-thread th)
+    (is (equal (reverse collector) (list 0 1 "over" "source unsub")))))
+
 (test throttle
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x (+ 6 3 3)) (wait-on-semaphore semaphore :timeout 0.2)))))
@@ -437,33 +465,36 @@
                (make-thread (lambda ()
                               (dotimes (x 6)
                                 (push (format nil "gen ~A" x) collector)
-                                (signal-semaphore semaphore)
                                 (next observer x)
+                                (signal-semaphore semaphore)
                                 (sleep 0.05))))
                (lambda () (push "source unsub" collector)))))
-         (times))
-    (subscribe
-     (throttle
-      o
-      (lambda (x)
-        (push (format nil "receive ~A" x) collector)
-        (observable (lambda (observer)
-                      (let ((end))
-                        (bt:make-thread (lambda ()
-                                          (loop for x from 0 to 100
-                                             while (not end)
-                                             do (push (format nil "send ~A" x) collector)
-                                               (next observer x)
-                                               (sleep 0.06))))
-                        (lambda ()
-                          (push (format nil "unsub ~A" x) collector)
-                          (setf end t)
-                          (signal-semaphore semaphore)))))))
-     (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))
+         (times)
+         (subscription
+          (subscribe
+           (throttle
+            o
+            (lambda (x)
+              (push (format nil "receive ~A" x) collector)
+              (observable (lambda (observer)
+                            (let ((end))
+                              (make-thread (lambda ()
+                                             (loop for x from 0 to 100
+                                                while (not end)
+                                                do (push (format nil "send ~A" x) collector)
+                                                  (next observer x)
+                                                  (sleep 0.06))))
+                              (lambda ()
+                                (push (format nil "unsub ~A" x) collector)
+                                (setf end t)
+                                (signal-semaphore semaphore)))))))
+           (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))))
     (join-thread th)
+    (unsubscribe subscription)
     (is (equal (reverse collector) (list "gen 0" 0 "receive 0" "send 0" "gen 1" "send 1" "unsub 0"
                                          "gen 2" 2 "receive 2" "send 0" "gen 3" "send 1" "unsub 2"
-                                         "gen 4" 4 "receive 4" "send 0" "gen 5" "send 1" "unsub 4")))
+                                         "gen 4" 4 "receive 4" "send 0" "gen 5" "send 1" "unsub 4"
+                                         "source unsub")))
     (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.06 1000)))))
 
 (test throttletime
