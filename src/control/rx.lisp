@@ -23,7 +23,8 @@
            :subjectp
            :subscribe)
   ;; help customize operators
-  (:export :operator)
+  (:export :operator
+           :operator-auto-unsubcribe)
   ;; creation operators
   (:export :of
            :from
@@ -31,17 +32,19 @@
            :empty
            :thrown)
   ;; filtering operators
-  (:export :mapper
-           :mapto
+  (:export :distinct
+           :debounce
            :each
            :filter
            :head
            :ignores
+           :mapper
+           :mapto
+           :sample
            :tail
-           :debounce
+           :take
            :throttle
-           :throttletime
-           :distinct))
+           :throttletime))
 
 (in-package :aria.control.rx)
 
@@ -130,10 +133,14 @@
 (defmethod caslock ()
   (make-instance 'caslock))
 
-(defmacro caslock-once (caslock flagplace &rest expr)
+(defmacro with-caslock (caslock &rest expr)
+  `(progn (loop while (not (cas (slot-value ,caslock 'lock) :free :used)))
+          ,@expr
+          (setf (slot-value ,caslock 'lock) :free)))
+
+(defmacro with-caslock-once (caslock &rest expr)
   `(if (cas (slot-value ,caslock 'lock) :free :used)
-       (progn (setf ,flagplace t)
-              ,@expr)))
+       (progn ,@expr)))
 
 (defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (let ((complete)
@@ -142,11 +149,17 @@
                    :onnext (lambda (value)
                              (unless complete
                                (handler-case (funcall onnext value)
-                                 (error (reason) (caslock-once caslock complete (funcall onfail reason))))))
+                                 (error (reason) (with-caslock-once caslock
+                                                   (setf complete t)
+                                                   (funcall onfail reason))))))
                    :onfail (lambda (reason)
-                             (caslock-once caslock complete (funcall onfail reason)))
+                             (with-caslock-once caslock
+                               (setf complete t)
+                               (funcall onfail reason)))
                    :onover (lambda ()
-                             (caslock-once caslock complete (funcall onover))))))
+                             (with-caslock-once caslock
+                               (setf complete t)
+                               (funcall onover))))))
 
 (defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (wrap-observer :onnext onnext :onfail onfail :onover onover))
@@ -217,6 +230,32 @@
                  (lambda (observer)
                    (subscribe self (funcall pass observer)))))
 
+(defmethod operator-auto-unsubcribe ((self observable) (pass function))
+  "pass needs receive a observer, a subscription register and return a observer
+   thread safe"
+  (let* ((subscriptions)
+         (isunsub)
+         (caslock (caslock))
+         (register (lambda (subscription)
+                     (with-caslock caslock
+                       (if isunsub
+                           (unsubscribe (subscription-pass subscription))
+                           (push (subscription-pass subscription) subscriptions)))))
+         (unsuball (lambda ()
+                     (with-caslock caslock
+                       (setf isunsub t))
+                     (map nil (lambda (unsub) (unsubscribe unsub)) subscriptions))))
+    (make-instance 'observable
+                   :revolver
+                   (lambda (observer)
+                     (let* ((ob (funcall pass observer register))
+                            (onfail (onfail ob))
+                            (onover (onover ob)))
+                       (funcall register (subscribe self ob))
+                       (setf (onfail ob) (lambda (reason) (funcall onfail reason) (funcall unsuball)))
+                       (setf (onover ob) (lambda () (funcall onover) (funcall unsuball)))
+                       unsuball)))))
+
 ;; operators
 ;; operators.creation
 (defmethod of (&rest rest)
@@ -284,10 +323,10 @@
                 (observer :onnext
                           (lambda (value)
                             (if (funcall predicate value)
-                                (if (cas (slot-value firstlock 'lock) :free :used)
-                                    (progn (setf hasfirst t)
-                                           (next observer value)
-                                           (over observer)))))
+                                (with-caslock-once firstlock
+                                  (setf hasfirst t)
+                                  (next observer value)
+                                  (over observer))))
                           :onfail (onfail observer)
                           :onover (lambda ()
                                     (unless hasfirst
@@ -326,6 +365,22 @@
                                             (error "tail value not exist")))
                                     (over observer)))))))
 
+(defmethod sample ((self observable) (sampler observable))
+  (operator-auto-unsubcribe
+   self
+   (lambda (observer register)
+     (let ((last))
+       (funcall register
+                (subscribe sampler
+                           (lambda (x)
+                             (declare (ignorable x))
+                             (next observer last))))
+       (observer :onnext
+                 (lambda (value)
+                   (setf last value))
+                 :onfail (onfail observer)
+                 :onover (onover observer))))))
+
 (defmethod debounce ((self observable) (timer function) (clear function))
   "timer needs receive a onnext consumer and return a timer cancel handler
    clear needs receive a timer cancel handler"
@@ -346,31 +401,35 @@
                           :onfail (onfail observer)
                           :onover (onover observer))))))
 
+(defmethod take ((self observable) (count number))
+  (operator self
+            (lambda (observer)
+              (let ((takes 0)
+                    (caslock (caslock)))
+                (observer :onnext
+                          (lambda (value)
+                            (with-caslock caslock
+                              (if (< takes count)
+                                  (progn (next observer value)
+                                         (incf takes)
+                                         (unless (< takes count)
+                                           (over observer)))
+                                  (over observer))))
+                          :onfail (onfail observer)
+                          :onover (onover observer))))))
+
 (defmethod throttle ((self observable) (observablefn function))
   "observablefn needs receive a value and return a observable"
   (operator self
             (lambda (observer)
-              (let ((gap)
-                    (last1)
-                    (last2))
+              (let ((disable))
                 (observer :onnext
                           (lambda (value)
-                            (let ((now (get-internal-real-time))
-                                  (gap-copy gap))
-                              (if gap-copy
-                                  (if (>= now (+ gap-copy last2))
-                                      (progn (setf last2 now)
-                                             (next observer value)))
-                                  (unless (or last1 last2)
-                                    (setf last1 now)
-                                    (setf last2 last1)
-                                    (next observer value)
-                                    (subscribe (funcall observablefn value)
-                                               (lambda (x)
-                                                 (declare (ignorable x))
-                                                 (let ((now (get-internal-real-time)))
-                                                   (setf gap (- now last1))
-                                                   (setf last1 now))))))))
+                            (unless disable
+                              (setf disable t)
+                              (next observer value)
+                              (subscribe (take (funcall observablefn value) 2)
+                                         (observer :onover (lambda () (setf disable nil))))))
                           :onfail (onfail observer)
                           :onover (onover observer))))))
 
