@@ -113,6 +113,10 @@
 
 (defmethod id (&optional x) x)
 
+(defmethod tautology (value)
+  (declare (ignorable value))
+  t)
+
 (defmethod next ((self observer) value)
   (funcall (onnext self) value))
 
@@ -280,19 +284,42 @@
   (observable (lambda (observer) (fail observer reason))))
 
 ;; operators.filtering
-(defmethod mapper ((self observable) (function function))
+(defmethod distinct ((self observable) &optional (compare #'eq))
+  "distinct won't send value to next until it change
+   compare receive two value and return boolean, use eq as default compare method"
   (operator self
             (lambda (observer)
-              (observer :onnext (lambda (value) (next observer (funcall function value)))
-                        :onfail (onfail observer)
-                        :onover (onover observer)))))
+              (let ((last)
+                    (init t))
+                (observer :onnext
+                          (lambda (value)
+                            (if init
+                                (progn (setf init nil)
+                                       (setf last value)
+                                       (next observer value))
+                                (unless (funcall compare last value)
+                                  (setf last value)
+                                  (next observer value)))))))))
 
-(defmethod mapto ((self observable) value)
+(defmethod debounce ((self observable) (timer function) (clear function))
+  "timer needs receive a onnext consumer and return a timer cancel handler
+   clear needs receive a timer cancel handler"
   (operator self
             (lambda (observer)
-              (observer :onnext (lambda (x) (declare (ignorable x)) (next observer value))
-                        :onfail (onfail observer)
-                        :onover (onover observer)))))
+              (let ((cancel))
+                (observer :onnext
+                          (lambda (value)
+                            (let ((cancel-handler cancel))
+                              (if (not cancel-handler)
+                                  (setf cancel (funcall timer (lambda ()
+                                                                (setf cancel nil)
+                                                                (next observer value))))
+                                  (progn (funcall clear cancel-handler)
+                                         (setf cancel (funcall timer (lambda ()
+                                                                       (setf cancel nil)
+                                                                       (next observer value))))))))
+                          :onfail (onfail observer)
+                          :onover (onover observer))))))
 
 (defmethod each ((self observable) (consumer function))
   (operator self
@@ -308,10 +335,6 @@
                                                     (next observer value)))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
-
-(defmethod tautology (value)
-  (declare (ignorable value))
-  t)
 
 (defmethod head ((self observable) &optional (predicate #'tautology) (default nil default-supplied))
   "only take first value which compliance with predicate from next, then call observer.over
@@ -343,6 +366,36 @@
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
+(defmethod mapper ((self observable) (function function))
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (value) (next observer (funcall function value)))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
+
+(defmethod mapto ((self observable) value)
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (x) (declare (ignorable x)) (next observer value))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
+
+(defmethod sample ((self observable) (sampler observable))
+  (operator-auto-unsubcribe
+   self
+   (lambda (observer register)
+     (let ((last))
+       (funcall register
+                (subscribe sampler
+                           (lambda (x)
+                             (declare (ignorable x))
+                             (next observer last))))
+       (observer :onnext
+                 (lambda (value)
+                   (setf last value))
+                 :onfail (onfail observer)
+                 :onover (onover observer))))))
+
 (defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied))
   "only take last value which compliance with predicate from next
    will use a default value if there is no match"
@@ -364,42 +417,6 @@
                                             (next observer default)
                                             (error "tail value not exist")))
                                     (over observer)))))))
-
-(defmethod sample ((self observable) (sampler observable))
-  (operator-auto-unsubcribe
-   self
-   (lambda (observer register)
-     (let ((last))
-       (funcall register
-                (subscribe sampler
-                           (lambda (x)
-                             (declare (ignorable x))
-                             (next observer last))))
-       (observer :onnext
-                 (lambda (value)
-                   (setf last value))
-                 :onfail (onfail observer)
-                 :onover (onover observer))))))
-
-(defmethod debounce ((self observable) (timer function) (clear function))
-  "timer needs receive a onnext consumer and return a timer cancel handler
-   clear needs receive a timer cancel handler"
-  (operator self
-            (lambda (observer)
-              (let ((cancel))
-                (observer :onnext
-                          (lambda (value)
-                            (let ((cancel-handler cancel))
-                              (if (not cancel-handler)
-                                  (setf cancel (funcall timer (lambda ()
-                                                                (setf cancel nil)
-                                                                (next observer value))))
-                                  (progn (funcall clear cancel-handler)
-                                         (setf cancel (funcall timer (lambda ()
-                                                                       (setf cancel nil)
-                                                                       (next observer value))))))))
-                          :onfail (onfail observer)
-                          :onover (onover observer))))))
 
 (defmethod take ((self observable) (count number))
   (operator self
@@ -448,21 +465,3 @@
                                          (next observer value)))))
                           :onfail (onfail observer)
                           :onover (onover observer))))))
-
-(defmethod distinct ((self observable) &optional (compare #'eq))
-  "distinct won't send value to next until it change
-   compare receive two value and return boolean, use eq as default compare method"
-  (operator self
-            (lambda (observer)
-              (let ((last)
-                    (init t))
-                (observer :onnext
-                          (lambda (value)
-                            (if init
-                                (progn (setf init nil)
-                                       (setf last value)
-                                       (next observer value))
-                                (unless (funcall compare last value)
-                                  (setf last value)
-                                  (next observer value)))))))))
-
