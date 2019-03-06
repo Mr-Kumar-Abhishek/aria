@@ -14,6 +14,9 @@
             :components
             ((:file "scheduler")
              (:file "timer" :depends-on ("scheduler"))))
-   (:module "control"
+   (:module "concurrency"
+            :components
+            ((:file "caslock")))
+   (:module "control" :depends-on ("concurrency")
             :components
             ((:file "rx")))))

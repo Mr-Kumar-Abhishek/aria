@@ -4,6 +4,10 @@
   (:use :cl)
   (:import-from :atomics
                 :cas)
+  (:import-from :aria.concurrency.caslock
+                :caslock
+                :with-caslock
+                :with-caslock-once)
   (:export :observable
            :observablep
            :subscribe)
@@ -136,27 +140,6 @@
 
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
-
-(defclass caslock ()
-  ((lock :initform :free
-         :accessor lock
-         :type keyword)))
-
-(defmethod caslock ()
-  (make-instance 'caslock))
-
-(defmacro with-caslock (caslock &rest expr)
-  (let ((lock (gensym)))
-    `(let ((,lock ,caslock))
-       (loop while (not (cas (slot-value ,lock 'lock) :free :used)))
-       ,@expr
-       (setf (slot-value ,lock 'lock) :free))))
-
-(defmacro with-caslock-once (caslock &rest expr)
-  (let ((lock (gensym)))
-    `(let ((,lock ,caslock))
-       (if (cas (slot-value ,lock 'lock) :free :used)
-           (progn ,@expr)))))
 
 (defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (let ((complete)
