@@ -38,13 +38,14 @@
            :filter
            :head
            :ignores
-           :mapper
-           :mapto
            :sample
            :tail
            :take
            :throttle
-           :throttletime))
+           :throttletime)
+  ;;transformation operators
+  (:export :mapper
+           :mapto))
 
 (in-package :aria.control.rx)
 
@@ -261,7 +262,7 @@
                        unsuball)))))
 
 ;; operators
-;; operators.creation
+;; creation operators
 (defmethod of (&rest rest)
   (observable (lambda (observer)
                 (loop for x in rest do (next observer x))
@@ -283,7 +284,7 @@
 (defmethod thrown (reason)
   (observable (lambda (observer) (fail observer reason))))
 
-;; operators.filtering
+;; filtering operators
 (defmethod distinct ((self observable) &optional (compare #'eq))
   "distinct won't send value to next until it change
    compare receive two value and return boolean, use eq as default compare method"
@@ -363,20 +364,6 @@
   (operator self
             (lambda (observer)
               (observer :onnext (lambda (value) (declare (ignorable value)))
-                        :onfail (onfail observer)
-                        :onover (onover observer)))))
-
-(defmethod mapper ((self observable) (function function))
-  (operator self
-            (lambda (observer)
-              (observer :onnext (lambda (value) (next observer (funcall function value)))
-                        :onfail (onfail observer)
-                        :onover (onover observer)))))
-
-(defmethod mapto ((self observable) value)
-  (operator self
-            (lambda (observer)
-              (observer :onnext (lambda (x) (declare (ignorable x)) (next observer value))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
@@ -465,3 +452,18 @@
                                          (next observer value)))))
                           :onfail (onfail observer)
                           :onover (onover observer))))))
+
+;; transformation operators
+(defmethod mapper ((self observable) (function function))
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (value) (next observer (funcall function value)))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
+
+(defmethod mapto ((self observable) value)
+  (operator self
+            (lambda (observer)
+              (observer :onnext (lambda (x) (declare (ignorable x)) (next observer value))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))

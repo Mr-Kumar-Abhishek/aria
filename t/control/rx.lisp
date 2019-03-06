@@ -43,13 +43,15 @@
                 :filter
                 :head
                 :ignores
-                :mapper
-                :mapto
                 :sample
                 :tail
                 :take
                 :throttle
-                :throttletime))
+                :throttletime)
+  ;; transformation operators
+  (:import-from :aria.control.rx
+                :mapper
+                :mapto))
 
 (in-package :aria-test.control.rx)
 
@@ -320,40 +322,17 @@
     (subscribe (ignores o) (observer :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list "over")))))
 
-(test mapper
-  (let ((o (observable
-            (lambda (observer)
-              (dotimes (x 10) (next observer x)))))
-        (collector))
-    (subscribe (mapper o (lambda (x) (+ x 100))) (lambda (value) (push value collector)))
-    (is (equal (reverse collector) (list 100 101 102 103 104 105 106 107 108 109)))))
-
-(test mapto
-  (let ((o (observable
-            (lambda (observer)
-              (dotimes (x 10) (next observer x)))))
-        (collector))
-    (subscribe (mapto o 100) (lambda (value) (push value collector)))
-    (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))
-
 (test sample
   (let* ((event1)
          (event2)
          (event3)
-         ;;(end)
          (collector)
          (o (sample (observable (lambda (observer)
                                   (setf event1 (lambda () (next observer "event1")))
-                                  (setf event2 (lambda () (next observer "event2")))
-                                  ;(setf end (lambda () (over observer)))
-                                  ;;(lambda () (push "unsub source" collector))
-                                  ))
+                                  (setf event2 (lambda () (next observer "event2")))))
                     (observable (lambda (observer)
-                                  (setf event3 (lambda () (next observer "event3")))
-                                  ;;(lambda () (print "unsub sampler"))
-                                  )))))
-    (subscribe o (observer :onnext (lambda (value) (push value collector)) ;;:onover (lambda () (print "over"))
-                           ))
+                                  (setf event3 (lambda () (next observer "event3"))))))))
+    (subscribe o (observer :onnext (lambda (value) (push value collector))))
     (funcall event1)
     (funcall event2)
     (funcall event3)
@@ -535,3 +514,20 @@
                (lambda (value) (push value collector) (signal-semaphore semaphore)))
     (join-thread th)
     (is (equal (reverse collector) (list 0)))))
+
+;; transformation operators
+(test mapper
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (next observer x)))))
+        (collector))
+    (subscribe (mapper o (lambda (x) (+ x 100))) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 100 101 102 103 104 105 106 107 108 109)))))
+
+(test mapto
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (next observer x)))))
+        (collector))
+    (subscribe (mapto o 100) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))

@@ -81,13 +81,15 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod filter ((self observable) (predicate function)))`
 - `(defmethod head ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod ignores ((self observable)))`
-- `(defmethod mapper ((self observable) (function function)))`
-- `(defmethod mapto ((self observable) value)))`
 - `(defmethod sample ((self observable) (sampler observable)))`
 - `(defmethod take ((self observable) (count number)))`
 - `(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod throttle ((self observable) (observablefn function)))`
 - `(defmethod throttletime ((self observable) (milliseconds number)))`
+
+#### transformation
+- `(defmethod mapper ((self observable) (function function)))`
+- `(defmethod mapto ((self observable) value)))`
 
 ## aria.structure.queue
 Just a normal queue
