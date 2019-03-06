@@ -50,6 +50,7 @@
                 :throttletime)
   ;; transformation operators
   (:import-from :aria.control.rx
+                :flatmap
                 :mapper
                 :mapto))
 
@@ -516,6 +517,132 @@
     (is (equal (reverse collector) (list 0)))))
 
 ;; transformation operators
+(test flatmap
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1))))
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (dotimes (x 3)
+                              (next observer (+ (+ x 1) val)))
+                            (lambda ()
+                              (push (format nil "inner unsub ~A" val) collector)))))))
+    (unsubscribe (subscribe (flatmap o observablefn)
+                            (observer :onnext (lambda (value) (push value collector))
+                                      :onover (lambda () (push "over" collector)))))
+    (is (equal (reverse collector) (list 11 12 13
+                                         21 22 23
+                                         31 32 33
+                                         "source unsub"
+                                         "inner unsub 10"
+                                         "inner unsub 20"
+                                         "inner unsub 30")))))
+
+(test flatmap-concurrent-0
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1)))))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (dotimes (x 3)
+                              (next observer (+ (+ x 1) val))))))))
+    (subscribe (flatmap o observablefn 0)
+               (lambda (value) (push value collector)))
+    (is (eq (length collector) 0))))
+
+(test flatmap-concurrent-limit-stuck
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1)))))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (dotimes (x 3)
+                              (next observer (+ (+ x 1) val))))))))
+    (subscribe (flatmap o observablefn 2)
+               (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 11 12 13
+                                         21 22 23)))))
+
+(test flatmap-concurrent-limit-unstuck
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1)))))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (dotimes (x 3)
+                              (next observer (+ (+ x 1) val)))
+                            (over observer))))))
+    (subscribe (flatmap o observablefn 2)
+               (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 11 12 13
+                                         21 22 23
+                                         31 32 33)))))
+
+(test flatmap-inner-fail
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1))))
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (if (eq val 30)
+                                (fail observer "fail"))
+                            (dotimes (x 3)
+                              (next observer (+ (+ x 1) val)))
+                            (lambda ()
+                                (push (format nil "inner unsub ~A" val) collector)))))))
+    (subscribe (flatmap o observablefn)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list 11 12 13
+                                         21 22 23
+                                         "fail"
+                                         "source unsub"
+                                         "inner unsub 10"
+                                         "inner unsub 20"
+                                         "inner unsub 30")))))
+
+(test flatmap-inner-over
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1))))
+                          (over observer)
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (dotimes (x 3)
+                              (next observer (+ (+ x 1) val)))
+                            (over observer)
+                            (lambda ()
+                                (push (format nil "inner unsub ~A" val) collector)))))))
+    (subscribe (flatmap o observablefn)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 11 12 13
+                                         "inner unsub 10"
+                                         21 22 23
+                                         "inner unsub 20"
+                                         31 32 33
+                                         "inner unsub 30"
+                                         "over"
+                                         "source unsub")))))
+
 (test mapper
   (let ((o (observable
             (lambda (observer)
