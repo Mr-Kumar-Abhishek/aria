@@ -24,7 +24,14 @@
            :subscribe)
   ;; help customize operators
   (:export :operator
-           :operator-auto-unsubcribe)
+           :operator-with-subscriptions-context
+           :operator-auto-unsubscribe
+           :subscribe-unsafe
+           :subscriptions-context
+           :register
+           :register-source
+           :unregister
+           :unsubscribe-all)
   ;; creation operators
   (:export :of
            :from
@@ -44,7 +51,8 @@
            :throttle
            :throttletime)
   ;;transformation operators
-  (:export :mapper
+  (:export :flatmap
+           :mapper
            :mapto))
 
 (in-package :aria.control.rx)
@@ -139,13 +147,17 @@
   (make-instance 'caslock))
 
 (defmacro with-caslock (caslock &rest expr)
-  `(progn (loop while (not (cas (slot-value ,caslock 'lock) :free :used)))
-          ,@expr
-          (setf (slot-value ,caslock 'lock) :free)))
+  (let ((lock (gensym)))
+    `(let ((,lock ,caslock))
+       (loop while (not (cas (slot-value ,lock 'lock) :free :used)))
+       ,@expr
+       (setf (slot-value ,lock 'lock) :free))))
 
 (defmacro with-caslock-once (caslock &rest expr)
-  `(if (cas (slot-value ,caslock 'lock) :free :used)
-       (progn ,@expr)))
+  (let ((lock (gensym)))
+    `(let ((,lock ,caslock))
+       (if (cas (slot-value ,lock 'lock) :free :used)
+           (progn ,@expr)))))
 
 (defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
   (let ((complete)
@@ -191,20 +203,22 @@
 (defmethod subscription-pass ((self subscription))
   self)
 
-(defmethod subscribe ((self observable) (ob observer))
-  (let ((isover)
-        (onover (onover ob))
-        (isfail)
-        (onfail (onfail ob))
-        (subscription))
-    (setf (onover ob) (lambda () (setf isover t) (funcall onover)))
-    (setf (onfail ob) (lambda (reason) (setf isfail t) (funcall onfail reason)))
+(defmethod subscribe ((self observable) (observer observer))
+  (let* ((isover)
+         (isfail)
+         (subscription)
+         (ob (observer :onnext (onnext observer)
+                       :onfail (lambda (reason)
+                                 (setf isfail t)
+                                 (fail observer reason)
+                                 (if subscription
+                                     (unsubscribe subscription)))
+                       :onover (lambda ()
+                                 (setf isover t)
+                                 (over observer)
+                                 (if subscription
+                                     (unsubscribe subscription))))))
     (setf subscription (subscription-pass (funcall (revolver self) ob)))
-    (let ((onover (onover ob))
-          (onfail (onfail ob)))
-      ;; method unsubscribe is thread safe
-      (setf (onover ob) (lambda () (funcall onover) (unsubscribe subscription)))
-      (setf (onfail ob) (lambda (reason) (funcall onfail reason) (unsubscribe subscription))))
     (if (or isover isfail)
         (unsubscribe subscription))
     subscription))
@@ -226,8 +240,6 @@
                (if onunsubscribe
                    (funcall onunsubscribe))))))
 
-(defmethod switchmap ())
-
 (defmethod operator ((self observable) (pass function))
   "pass needs receive a observer and return a observer"
   (make-instance 'observable
@@ -235,31 +247,88 @@
                  (lambda (observer)
                    (subscribe self (funcall pass observer)))))
 
-(defmethod operator-auto-unsubcribe ((self observable) (pass function))
+(defmethod operator-with-subscriptions-context ((self observable) (pass function))
+  (make-instance 'observable
+                 :revolver
+                 (lambda (observer)
+                   (let* ((context (subscriptions-context)))
+                     (register-source context (subscribe self (funcall pass observer context)))
+                     (lambda ()
+                       (unsubscribe-all context))))))
+
+(defmethod subscribe-unsafe ((self observable) (observer observer))
+  "designed for customize operator
+   need to manually unsubscribe the subscription when onfail or onover happens"
+  (subscription-pass (funcall (revolver self) observer)))
+
+(defmethod operator-auto-unsubscribe ((self observable) (pass function))
   "pass needs receive a observer, a subscription register and return a observer
    thread safe"
-  (let* ((subscriptions)
-         (isunsub)
-         (caslock (caslock))
-         (register (lambda (subscription)
-                     (with-caslock caslock
-                       (if isunsub
-                           (unsubscribe (subscription-pass subscription))
-                           (push (subscription-pass subscription) subscriptions)))))
-         (unsuball (lambda ()
-                     (with-caslock caslock
-                       (setf isunsub t))
-                     (map nil (lambda (unsub) (unsubscribe unsub)) subscriptions))))
-    (make-instance 'observable
+  (make-instance 'observable
                    :revolver
                    (lambda (observer)
-                     (let* ((ob (funcall pass observer register))
+                     (let* ((subscriptions)
+                            (selfsub)
+                            (isunsub)
+                            (caslock (caslock))
+                            (register (lambda (subscription)
+                                        (with-caslock caslock
+                                          (if isunsub
+                                              (unsubscribe (subscription-pass subscription))
+                                              (push (subscription-pass subscription) subscriptions)))))
+                            (unsuball (lambda ()
+                                        (with-caslock caslock
+                                          (setf isunsub t))
+                                        (unsubscribe selfsub)
+                                        (map nil (lambda (unsub) (unsubscribe unsub)) subscriptions)))
+                            (ob (funcall pass observer register))
                             (onfail (onfail ob))
                             (onover (onover ob)))
-                       (funcall register (subscribe self ob))
+                       (setf selfsub (subscription-pass (subscribe self ob)))
                        (setf (onfail ob) (lambda (reason) (funcall onfail reason) (funcall unsuball)))
                        (setf (onover ob) (lambda () (funcall onover) (funcall unsuball)))
-                       unsuball)))))
+                       unsuball))))
+
+(defclass subscriptions-context ()
+  ((subscriptions :initform nil
+                  :accessor subscriptions
+                  :type list)
+   (source :initform nil
+           :accessor source
+           :type (or null subscription))
+   (spinlock :initform (caslock)
+             :accessor spinlock
+             :type caslock)
+   (isunsubscribed :initform nil
+                   :accessor isunsubscribed
+                   :type boolean)))
+
+(defmethod subscriptions-context ()
+  (make-instance 'subscriptions-context))
+
+(defmethod register ((self subscriptions-context) (subscription subscription))
+  (with-caslock (spinlock self)
+    (if (isunsubscribed self)
+        (unsubscribe subscription)
+        (push subscription (subscriptions self)))))
+
+(defmethod register-source ((self subscriptions-context) (subscription subscription))
+  (setf (source self) subscription))
+
+(defmethod unregister ((self subscriptions-context) (subscription subscription))
+  (with-caslock (spinlock self)
+    (unless (isunsubscribed self)
+      (setf (subscriptions self) (remove subscription (subscriptions self))))))
+
+(defmethod unregister ((self subscriptions-context) (subscription null)))
+
+(defmethod unsubscribe-all ((self subscriptions-context))
+  (with-caslock (spinlock self)
+    (setf (isunsubscribed self) t))
+  (let ((source (source self)))
+    (if (subscriptionp source)
+        (unsubscribe source)))
+  (map nil (lambda (sub) (unsubscribe sub)) (reverse (subscriptions self))))
 
 ;; operators
 ;; creation operators
@@ -368,20 +437,25 @@
                         :onover (onover observer)))))
 
 (defmethod sample ((self observable) (sampler observable))
-  (operator-auto-unsubcribe
+  (operator-with-subscriptions-context
    self
-   (lambda (observer register)
+   (lambda (observer context)
      (let ((last))
-       (funcall register
-                (subscribe sampler
-                           (lambda (x)
-                             (declare (ignorable x))
-                             (next observer last))))
+       (register context (subscribe sampler
+                                    (observer :onnext (lambda (x)
+                                                        (declare (ignorable x))
+                                                        (next observer last))
+                                              :onfail (onfail observer)
+                                              :onover (onover observer))))
        (observer :onnext
                  (lambda (value)
                    (setf last value))
-                 :onfail (onfail observer)
-                 :onover (onover observer))))))
+                 :onfail (lambda (reason)
+                           (fail observer reason)
+                           (unsubscribe-all context))
+                 :onover (lambda ()
+                           (over observer)
+                           (unsubscribe-all context)))))))
 
 (defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied))
   "only take last value which compliance with predicate from next
@@ -454,6 +528,47 @@
                           :onover (onover observer))))))
 
 ;; transformation operators
+(defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1))
+  "observablefn needs receive a value from next and return a observable
+   flatmap will hold all subscriptions from observablefn
+   concurrent could limit max size of hold subscriptions"
+  (operator-with-subscriptions-context
+   self
+   (lambda (observer context)
+     (observer :onnext
+               (lambda (value)
+                 (let ((current)
+                       (restrict)
+                       (isover))
+                   (unless (< concurrent 0)
+                     (with-caslock (spinlock context)
+                       (unless (< (length (subscriptions context)) concurrent)
+                         (setf restrict t))))
+                   (unless restrict
+                     (setf current
+                           (subscribe-unsafe
+                            (funcall observablefn value)
+                            (observer :onnext
+                                      (lambda (valuein)
+                                        (next observer valuein))
+                                      :onfail
+                                      (onfail observer)
+                                      :onover
+                                      (lambda ()
+                                        (setf isover t)
+                                        (unregister context current)
+                                        (if current
+                                            (unsubscribe current))))))
+                     (if isover
+                         (unsubscribe current)
+                         (register context current)))))
+               :onfail (lambda (reason)
+                         (fail observer reason)
+                         (unsubscribe-all context))
+               :onover (lambda ()
+                         (over observer)
+                         (unsubscribe-all context))))))
+
 (defmethod mapper ((self observable) (function function))
   (operator self
             (lambda (observer)
@@ -467,3 +582,5 @@
               (observer :onnext (lambda (x) (declare (ignorable x)) (next observer value))
                         :onfail (onfail observer)
                         :onover (onover observer)))))
+
+(defmethod switchmap ())
