@@ -25,7 +25,6 @@
   ;; help customize operators
   (:export :operator
            :operator-with-subscriptions-context
-           :operator-auto-unsubscribe
            :subscribe-unsafe
            :subscriptions-context
            :register
@@ -260,34 +259,6 @@
   "designed for customize operator
    need to manually unsubscribe the subscription when onfail or onover happens"
   (subscription-pass (funcall (revolver self) observer)))
-
-(defmethod operator-auto-unsubscribe ((self observable) (pass function))
-  "pass needs receive a observer, a subscription register and return a observer
-   thread safe"
-  (make-instance 'observable
-                   :revolver
-                   (lambda (observer)
-                     (let* ((subscriptions)
-                            (selfsub)
-                            (isunsub)
-                            (caslock (caslock))
-                            (register (lambda (subscription)
-                                        (with-caslock caslock
-                                          (if isunsub
-                                              (unsubscribe (subscription-pass subscription))
-                                              (push (subscription-pass subscription) subscriptions)))))
-                            (unsuball (lambda ()
-                                        (with-caslock caslock
-                                          (setf isunsub t))
-                                        (unsubscribe selfsub)
-                                        (map nil (lambda (unsub) (unsubscribe unsub)) subscriptions)))
-                            (ob (funcall pass observer register))
-                            (onfail (onfail ob))
-                            (onover (onover ob)))
-                       (setf selfsub (subscription-pass (subscribe self ob)))
-                       (setf (onfail ob) (lambda (reason) (funcall onfail reason) (funcall unsuball)))
-                       (setf (onover ob) (lambda () (funcall onover) (funcall unsuball)))
-                       unsuball))))
 
 (defclass subscriptions-context ()
   ((subscriptions :initform nil
