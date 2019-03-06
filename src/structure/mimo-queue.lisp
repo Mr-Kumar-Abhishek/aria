@@ -14,8 +14,7 @@
                 ::make-node
                 :make-queue)
   (:import-from :aria.structure.miso-queue
-                :en
-                :de)
+                :en)
   (:export :queue
            :make-queue
            :en
