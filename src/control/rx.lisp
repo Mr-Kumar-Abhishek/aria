@@ -29,8 +29,8 @@
   ;; help customize operators
   (:export :operator
            :operator-with-subscriptions-context
-           :subscribe-unsafe
-           :subscriptions-context
+           :subscribe-unsafe)
+  (:export :subscriptions-context
            :register
            :register-source
            :unregister
