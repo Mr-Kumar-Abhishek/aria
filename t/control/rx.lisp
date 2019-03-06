@@ -643,6 +643,29 @@
                                          "over"
                                          "source unsub")))))
 
+(test flatmap-take-inner-fail
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1))))
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (take (observable
+                                (lambda (observer) 
+                                  (dotimes (x 3)
+                                    (next observer (+ (+ x 1) val))
+                                    (if (eq x 2) (fail observer "fail"))) 
+                                  (lambda ()
+                                    (push (format nil "inner unsub ~A" val) collector))))
+                               2))))
+    (subscribe (flatmap o observablefn)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list 11 12 "inner unsub 10"
+                                         21 22 "inner unsub 20"
+                                         31 32 "inner unsub 30")))))
+
 (test mapper
   (let ((o (observable
             (lambda (observer)
