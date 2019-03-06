@@ -1,6 +1,11 @@
 # aria
 data structures and some trival stuffs in common lisp for my lady UK Aria H. Kanzaki
 
+## constructor naming rules 
+- begin with `gen-` means a service-like stuff will be start up by the constructor
+- begin with `make-` means a data structure will be alloc by the constructor
+- begin with nothing means nothing special
+
 ## aria.asynchronous.scheduler
 a scheduler, works in a separate thread, takes tasks into queue and consume task one by one
 
@@ -20,6 +25,15 @@ a timer based on scheduler, basically used for provide a `settimeout`
 - `(defmethod end ((self timer))`
 - `(defmethod cleartimeout ((clear function)))`
 
+## aria.concurrency.caslock
+a spin lock based on cas(compare and swap)
+
+### provides
+- `(defclass caslock ())`
+- `(defmethod caslock ())`
+- `(defmacro with-caslock (caslock &rest expr))`
+- `(defmacro with-caslock-once (caslock &rest expr))`
+
 ## aria.control.rx
 frp for cl inspired by [reactivex](http://reactivex.io/)
 
@@ -32,7 +46,7 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod observablep ((self observable)))`
 - `(defmethod observablep (self))`
 - `(defmethod observable ((revolver function)))`
-- `(defmethod subscribe ((self observable) (ob observer)))`
+- `(defmethod subscribe ((self observable) (observer observer)))`
 - `(defmethod subscribe ((self observable) (onnext function)))`
 
 #### subscription
@@ -63,7 +77,16 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 
 ### provide for customize operator
 - `(defmethod operator ((self observable) (pass function)))`
-- `(defmethod operator-auto-unsubcribe ((self observable) (pass function)))`
+- `(defmethod operator-with-subscriptions-context ((self observable) (pass function)))`
+- `(defmethod subscriptions ((self subscriptions-context)))`
+- `(defmethod spin-lock ((self subscriptions-context)))`
+- `(defclass subscriptions-context ())`
+- `(defmethod subscriptions-context ())`
+- `(defmethod register ((self subscriptions-context) (subscription subscription)))`
+- `(defmethod register-source ((self subscriptions-context) (subscription subscription)))`
+- `(defmethod unregister ((self subscriptions-context) (subscription subscription)))`
+- `(defmethod unregister ((self subscriptions-context) (subscription null))))`
+- `(defmethod unsubscribe-all ((self subscriptions-context)))`
 
 ### provide operators
 
@@ -88,6 +111,7 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 - `(defmethod throttletime ((self observable) (milliseconds number)))`
 
 #### transformation
+- `(defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1)))`
 - `(defmethod mapper ((self observable) (function function)))`
 - `(defmethod mapto ((self observable) value)))`
 
