@@ -78,9 +78,12 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 ### provide for customize operator
 - `(defmethod operator ((self observable) (pass function)))`
 - `(defmethod operator-with-subscriptions-context ((self observable) (pass function)))`
+- `(defmethod subscribe-unsafe ((self observable) (observer observer)))`
+
+#### subscriptions-context
+- `(defclass subscriptions-context ())`
 - `(defmethod subscriptions ((self subscriptions-context)))`
 - `(defmethod spin-lock ((self subscriptions-context)))`
-- `(defclass subscriptions-context ())`
 - `(defmethod subscriptions-context ())`
 - `(defmethod register ((self subscriptions-context) (subscription subscription)))`
 - `(defmethod register-source ((self subscriptions-context) (subscription subscription)))`
