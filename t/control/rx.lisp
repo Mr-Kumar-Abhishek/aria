@@ -44,6 +44,9 @@
                 :head
                 :ignores
                 :sample
+                :single
+                :skip
+                :skipuntil
                 :tail
                 :take
                 :throttle
@@ -378,6 +381,108 @@
                                   (lambda () (push "unsub sampler" collector)))))))
     (unsubscribe (subscribe o (observer :onover (lambda () (push "over" collector)))))
     (is (equal (reverse collector) (list "unsub source" "unsub sampler")))))
+
+(test single
+  (let ((collector)
+        (o (of 1 2 3 3 4)))
+    (subscribe (single o (lambda (x) (eq x 4)))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 4 "over")))))
+
+(test single-duplicated-matched
+  (let ((collector)
+        (o (of 1 2 3 3 4)))
+    (subscribe (single o (lambda (x) (eq x 3)))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list "fail")))))
+
+(test single-not-over
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 4)
+                            (next observer x))))))
+    (subscribe (single o (lambda (x) (eq x 0)))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (eq (reverse collector) nil))))
+
+(test single-empty-over
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 4)
+                            (next observer x))
+                          (over observer)))))
+    (subscribe (single o (lambda (x) (eq x 0)))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 "over")))))
+
+(test skip
+  (let ((collector)
+        (o (of 1 2 3 4)))
+    (subscribe (skip o 2) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 3 4)))))
+
+(test skip-zero
+  (let ((collector)
+        (o (of 1 2 3 4)))
+    (subscribe (skip o 0) (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 1 2 3 4)))))
+
+(test skipuntil
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (collector)
+         (o (observable (lambda (observer)
+                          (make-thread (lambda ()
+                                         (dotimes (x 4)
+                                           (sleep 0.01)
+                                           (next observer x))))
+                          (lambda ()
+                            (push "source unsub" collector))))))
+    (subscribe (skipuntil o
+                          (observable (lambda (observer)
+                                        (make-thread
+                                         (lambda ()
+                                           (sleep 0.015)
+                                           (next observer "notify")
+                                           (fail observer "fail")))
+                                        (lambda ()
+                                          (push "inner unsub" collector)))))
+               (observer :onnext (lambda (value) (push value collector) (signal-semaphore semaphore))
+                         :onfail (lambda (reason) (push reason collector))))
+    (join-thread th)
+    (is (equal (reverse collector) (list "inner unsub" 1 2 3)))))
+
+(test skipuntil-inner-fail
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 1) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (collector)
+         (o (observable (lambda (observer)
+                          (make-thread (lambda ()
+                                         (dotimes (x 4)
+                                           (sleep 0.01)
+                                           (next observer x))))
+                          (lambda ()
+                            (push "source unsub" collector))))))
+    (subscribe (skipuntil o
+                          (observable (lambda (observer)
+                                        (make-thread
+                                         (lambda ()
+                                           (sleep 0.015)
+                                           (fail observer "fail")))
+                                        (lambda ()
+                                          (push "inner unsub" collector)))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (push reason collector) (signal-semaphore semaphore))))
+    (join-thread th)
+    (is (equal (reverse collector) (list "fail" "source unsub" "inner unsub")))))
 
 (test tail
   (let ((o (of 1 2 3 4))
