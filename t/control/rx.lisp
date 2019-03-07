@@ -656,7 +656,7 @@
                                 (lambda (observer) 
                                   (dotimes (x 3)
                                     (next observer (+ (+ x 1) val))
-                                    (if (eq x 2) (fail observer "fail"))) 
+                                    (if (eq (+ x 1) 3) (fail observer "fail"))) 
                                   (lambda ()
                                     (push (format nil "inner unsub ~A" val) collector))))
                                2))))
