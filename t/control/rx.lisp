@@ -462,21 +462,66 @@
                               (make-thread (lambda ()
                                              (loop for x from 0 to 100
                                                 while (not end)
-                                                do (push (format nil "send ~A" x) collector)
-                                                  (next observer x)
-                                                  (sleep 0.06))))
+                                                do (sleep 0.06)
+                                                  (push (format nil "send ~A" x) collector)
+                                                  (next observer x))))
                               (lambda ()
                                 (push (format nil "unsub ~A" x) collector)
                                 (setf end t)
                                 (signal-semaphore semaphore)))))))
-           (lambda (value) (push value collector) (push (get-internal-real-time) times) (signal-semaphore semaphore)))))
+           (lambda (value)
+             (push value collector)
+             (push (get-internal-real-time) times)
+             (signal-semaphore semaphore)))))
     (join-thread th)
     (unsubscribe subscription)
-    (is (equal (reverse collector) (list "gen 0" 0 "receive 0" "send 0" "gen 1" "send 1" "unsub 0"
-                                         "gen 2" 2 "receive 2" "send 0" "gen 3" "send 1" "unsub 2"
-                                         "gen 4" 4 "receive 4" "send 0" "gen 5" "send 1" "unsub 4"
+    (is (equal (reverse collector) (list "gen 0" 0 "receive 0" "gen 1" "send 0" "unsub 0"
+                                         "gen 2" 2 "receive 2" "gen 3" "send 0" "unsub 2"
+                                         "gen 4" 4 "receive 4" "gen 5" "send 0" "unsub 4"
                                          "source unsub")))
     (is (>= (gaptop times (lambda (x y) (< x y))) (* 0.06 1000)))))
+
+(test throttle-inner-automatically-unsubscribe
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1))))
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (dotimes (x 1)
+                              (next observer (+ x 1)))
+                            (lambda ()
+                              (push (format nil "inner unsub ~A" val) collector)))))))
+    (subscribe (throttle o observablefn)
+               (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 10 "inner unsub 10"
+                                         20 "inner unsub 20"
+                                         30 "inner unsub 30")))))
+
+(test throttle-over-inner-not-over
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 3)
+                            (next observer (* 10 (+ x 1))))
+                          (over observer)
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (observable
+                          (lambda (observer)
+                            (declare (ignorable observer))
+                            (lambda ()
+                              (push (format nil "inner unsub ~A" val) collector)))))))
+    (subscribe (throttle o observablefn)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 10
+                                         "over"
+                                         "source unsub"
+                                         "inner unsub 10")))))
 
 (test throttletime
   (let* ((semaphore (make-semaphore))
