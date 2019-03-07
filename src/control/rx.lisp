@@ -56,7 +56,8 @@
   ;;transformation operators
   (:export :flatmap
            :mapper
-           :mapto))
+           :mapto
+           :switchmap))
 
 (in-package :aria.control.rx)
 
@@ -227,14 +228,14 @@
   (make-instance 'observable
                  :revolver
                  (lambda (observer)
-                   (subscribe self (funcall pass observer)))))
+                   (subscribe-unsafe self (funcall pass observer)))))
 
 (defmethod operator-with-subscriptions-context ((self observable) (pass function))
   (make-instance 'observable
                  :revolver
                  (lambda (observer)
                    (let* ((context (subscriptions-context)))
-                     (register-source context (subscribe self (funcall pass observer context)))
+                     (register-source context (subscribe-unsafe self (funcall pass observer context)))
                      (lambda ()
                        (unsubscribe-all context))))))
 
@@ -395,12 +396,12 @@
    self
    (lambda (observer context)
      (let ((last))
-       (register context (subscribe sampler
-                                    (observer :onnext (lambda (x)
-                                                        (declare (ignorable x))
-                                                        (next observer last))
-                                              :onfail (onfail observer)
-                                              :onover (onover observer))))
+       (register context (subscribe-unsafe sampler
+                                           (observer :onnext (lambda (x)
+                                                               (declare (ignorable x))
+                                                               (next observer last))
+                                                     :onfail (onfail observer)
+                                                     :onover (onover observer))))
        (observer :onnext
                  (lambda (value)
                    (setf last value))
@@ -460,8 +461,8 @@
                             (unless disable
                               (setf disable t)
                               (next observer value)
-                              (subscribe (take (funcall observablefn value) 2)
-                                         (observer :onover (lambda () (setf disable nil))))))
+                              (subscribe-unsafe (take (funcall observablefn value) 2)
+                                                (observer :onover (lambda () (setf disable nil))))))
                           :onfail (onfail observer)
                           :onover (onover observer))))))
 
@@ -489,39 +490,52 @@
   (operator-with-subscriptions-context
    self
    (lambda (observer context)
-     (observer :onnext
-               (lambda (value)
-                 (let ((current)
-                       (restrict)
-                       (isover))
-                   (unless (< concurrent 0)
-                     (with-caslock (spinlock context)
-                       (unless (< (length (subscriptions context)) concurrent)
-                         (setf restrict t))))
-                   (unless restrict
-                     (setf current
-                           (subscribe-unsafe
-                            (funcall observablefn value)
-                            (observer :onnext
-                                      (lambda (valuein)
-                                        (next observer valuein))
-                                      :onfail
-                                      (onfail observer)
-                                      :onover
-                                      (lambda ()
-                                        (setf isover t)
-                                        (unregister context current)
-                                        (if current
-                                            (unsubscribe current))))))
-                     (if isover
-                         (unsubscribe current)
-                         (register context current)))))
-               :onfail (lambda (reason)
-                         (fail observer reason)
-                         (unsubscribe-all context))
-               :onover (lambda ()
-                         (over observer)
-                         (unsubscribe-all context))))))
+     (let ((isfail)
+           (sourceover))
+       (observer :onnext
+                 (lambda (value)
+                   (unless isfail
+                     (let ((current)
+                           (restrict)
+                           (isover))
+                       (unless (< concurrent 0)
+                         (with-caslock (spinlock context)
+                           (unless (< (length (subscriptions context)) concurrent)
+                             (setf restrict t))))
+                       (unless restrict
+                         (setf current
+                               (subscribe-unsafe
+                                (funcall observablefn value)
+                                (observer :onnext
+                                          (lambda (valuein)
+                                            (next observer valuein))
+                                          :onfail
+                                          (lambda (reason)
+                                            (setf isfail t)
+                                            (fail observer reason))
+                                          :onover
+                                          (lambda ()
+                                            (setf isover t)
+                                            (if sourceover
+                                              (progn (over observer)
+                                                     (unsubscribe-all context))
+                                              (progn (unregister context current)
+                                                     (if current
+                                                         (unsubscribe current))))))))
+                         (if isover
+                             (unsubscribe current)
+                             (register context current))))))
+                 :onfail (lambda (reason)
+                           (fail observer reason)
+                           (unsubscribe-all context))
+                 :onover (lambda ()
+                           (setf sourceover t)
+                           (let ((active))
+                             (with-caslock (spinlock context)
+                               (setf active (> (length (subscriptions context)) 0)))
+                             (unless active
+                               (over observer)
+                               (unsubscribe-all context)))))))))
 
 (defmethod mapper ((self observable) (function function))
   (operator self
@@ -537,4 +551,52 @@
                         :onfail (onfail observer)
                         :onover (onover observer)))))
 
-(defmethod switchmap ())
+(defmethod switchmap ((self observable) (observablefn function))
+  (operator-with-subscriptions-context
+   self
+   (lambda (observer context)
+     (let ((prev)
+           (isfail)
+           (sourceover))
+       (observer :onnext
+                 (lambda (value)
+                   (unless isfail
+                     (if prev
+                         (progn (unregister context prev)
+                                (unsubscribe prev)))
+                     (let ((current)
+                           (isover))
+                       (setf current
+                             (subscribe-unsafe
+                              (funcall observablefn value)
+                              (observer :onnext
+                                        (lambda (valuein)
+                                          (next observer valuein))
+                                        :onfail
+                                        (lambda (reason)
+                                          (setf isfail t)
+                                          (fail observer reason))
+                                        :onover
+                                        (lambda ()
+                                          (setf isover t)
+                                          (if sourceover
+                                              (progn (over observer)
+                                                     (unsubscribe-all context))
+                                              (progn (unregister context current)
+                                                     (if current
+                                                         (unsubscribe current))))))))
+                       (if isover
+                           (unsubscribe current)
+                           (progn (setf prev current)
+                                  (register context current))))))
+                 :onfail (lambda (reason)
+                           (fail observer reason)
+                           (unsubscribe-all context))
+                 :onover (lambda ()
+                           (setf sourceover t)
+                           (let ((active))
+                             (with-caslock (spinlock context)
+                               (setf active (> (length (subscriptions context)) 0)))
+                             (unless active
+                               (over observer)
+                               (unsubscribe-all context)))))))))
