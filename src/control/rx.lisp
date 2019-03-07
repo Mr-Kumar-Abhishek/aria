@@ -29,7 +29,10 @@
   ;; help customize operators
   (:export :operator
            :operator-with-subscriptions-context
-           :subscribe-unsafe)
+           :operator-with-passfail-over-context
+           :operator-with-passfail-holdover-context
+           :subscribe-unsafe
+           :subscribe-with-passfail-over-context)
   (:export :subscriptions-context
            :register
            :register-source
