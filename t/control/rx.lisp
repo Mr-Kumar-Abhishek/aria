@@ -437,7 +437,7 @@
 
 (test skipuntil
   (let* ((semaphore (make-semaphore))
-         (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (th (make-thread (lambda () (dotimes (x 4) (wait-on-semaphore semaphore :timeout 0.2)))))
          (collector)
          (o (observable (lambda (observer)
                           (make-thread (lambda ()
@@ -454,7 +454,8 @@
                                            (next observer "notify")
                                            (fail observer "fail")))
                                         (lambda ()
-                                          (push "inner unsub" collector)))))
+                                          (push "inner unsub" collector)
+                                          (signal-semaphore semaphore)))))
                (observer :onnext (lambda (value) (push value collector) (signal-semaphore semaphore))
                          :onfail (lambda (reason) (push reason collector))))
     (join-thread th)
@@ -462,7 +463,7 @@
 
 (test skipuntil-inner-fail
   (let* ((semaphore (make-semaphore))
-         (th (make-thread (lambda () (dotimes (x 1) (wait-on-semaphore semaphore :timeout 0.2)))))
+         (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore :timeout 0.2)))))
          (collector)
          (o (observable (lambda (observer)
                           (make-thread (lambda ()
@@ -470,7 +471,8 @@
                                            (sleep 0.01)
                                            (next observer x))))
                           (lambda ()
-                            (push "source unsub" collector))))))
+                            (push "source unsub" collector)
+                            (signal-semaphore semaphore))))))
     (subscribe (skipuntil o
                           (observable (lambda (observer)
                                         (make-thread
@@ -478,7 +480,8 @@
                                            (sleep 0.015)
                                            (fail observer "fail")))
                                         (lambda ()
-                                          (push "inner unsub" collector)))))
+                                          (push "inner unsub" collector)
+                                          (signal-semaphore semaphore)))))
                (observer :onnext (lambda (value) (push value collector))
                          :onfail (lambda (reason) (push reason collector) (signal-semaphore semaphore))))
     (join-thread th)
