@@ -355,16 +355,16 @@
                       (over observer)
                       (if (source context) (unsubscribe-all context)))))
 
-(defmethod source-holdover ((self observer) (context over-context))
-  (observer :onnext (onnext self)
-            :onfail (onfail self)
+(defmethod source-holdover ((context over-context) (observer observer))
+  (observer :onnext (onnext observer)
+            :onfail (onfail observer)
             :onover (lambda ()
                       (setf (isover context) t)
                       (let ((active))
                         (with-caslock (spinlock context)
                           (setf active (> (length (subscriptions context)) 0)))
                         (unless active
-                          (over self)
+                          (over observer)
                           (unsubscribe-all context))))))
 
 (defmethod inner-passfail ((context fail-context) (observer observer))
@@ -616,55 +616,23 @@
   "observablefn needs receive a value from next and return a observable
    flatmap will hold all subscriptions from observablefn
    concurrent could limit max size of hold subscriptions"
-  (operator-with-subscriptions-context
+  (operator-with-passfail-holdover-context
    self
    (lambda (observer context)
-     (let ((isfail)
-           (sourceover))
-       (observer :onnext
-                 (lambda (value)
-                   (unless isfail
-                     (let ((current)
-                           (restrict)
-                           (isover))
-                       (unless (< concurrent 0)
-                         (with-caslock (spinlock context)
-                           (unless (< (length (subscriptions context)) concurrent)
-                             (setf restrict t))))
-                       (unless restrict
-                         (setf current
-                               (subscribe-unsafe
-                                (funcall observablefn value)
-                                (observer :onnext
-                                          (lambda (valuein)
-                                            (next observer valuein))
-                                          :onfail
-                                          (lambda (reason)
-                                            (setf isfail t)
-                                            (fail observer reason))
-                                          :onover
-                                          (lambda ()
-                                            (setf isover t)
-                                            (if sourceover
-                                              (progn (over observer)
-                                                     (unsubscribe-all context))
-                                              (progn (unregister context current)
-                                                     (if current
-                                                         (unsubscribe current))))))))
-                         (if isover
-                             (unsubscribe current)
-                             (register context current))))))
-                 :onfail (lambda (reason)
-                           (fail observer reason)
-                           (unsubscribe-all context))
-                 :onover (lambda ()
-                           (setf sourceover t)
-                           (let ((active))
-                             (with-caslock (spinlock context)
-                               (setf active (> (length (subscriptions context)) 0)))
-                             (unless active
-                               (over observer)
-                               (unsubscribe-all context)))))))))
+     (observer :onnext
+               (lambda (value)
+                 (let ((restrict))
+                   (unless (< concurrent 0)
+                     (with-caslock (spinlock context)
+                       (unless (< (length (subscriptions context)) concurrent)
+                         (setf restrict t))))
+                   (unless restrict
+                     (subscribe-with-passfail-over-context
+                      (funcall observablefn value)
+                      context
+                      observer))))
+               :onfail (onfail observer)
+               :onover (onover observer)))))
 
 (defmethod mapper ((self observable) (function function))
   (operator self
@@ -681,51 +649,18 @@
                         :onover (onover observer)))))
 
 (defmethod switchmap ((self observable) (observablefn function))
-  (operator-with-subscriptions-context
+  (operator-with-passfail-holdover-context
    self
    (lambda (observer context)
-     (let ((prev)
-           (isfail)
-           (sourceover))
+     (let ((prev))
        (observer :onnext
                  (lambda (value)
-                   (unless isfail
-                     (if prev
-                         (progn (unregister context prev)
-                                (unsubscribe prev)))
-                     (let ((current)
-                           (isover))
-                       (setf current
-                             (subscribe-unsafe
-                              (funcall observablefn value)
-                              (observer :onnext
-                                        (lambda (valuein)
-                                          (next observer valuein))
-                                        :onfail
-                                        (lambda (reason)
-                                          (setf isfail t)
-                                          (fail observer reason))
-                                        :onover
-                                        (lambda ()
-                                          (setf isover t)
-                                          (if sourceover
-                                              (progn (over observer)
-                                                     (unsubscribe-all context))
-                                              (progn (unregister context current)
-                                                     (if current
-                                                         (unsubscribe current))))))))
-                       (if isover
-                           (unsubscribe current)
-                           (progn (setf prev current)
-                                  (register context current))))))
-                 :onfail (lambda (reason)
-                           (fail observer reason)
-                           (unsubscribe-all context))
-                 :onover (lambda ()
-                           (setf sourceover t)
-                           (let ((active))
-                             (with-caslock (spinlock context)
-                               (setf active (> (length (subscriptions context)) 0)))
-                             (unless active
-                               (over observer)
-                               (unsubscribe-all context)))))))))
+                   (if prev
+                       (progn (unregister context prev)
+                              (unsubscribe prev)))
+                   (setf prev (subscribe-with-passfail-over-context
+                               (funcall observablefn value)
+                               context
+                               observer)))
+                 :onfail (onfail observer)
+                 :onover (onover observer))))))
