@@ -244,6 +244,36 @@
    need to manually unsubscribe the subscription when onfail or onover happens"
   (subscription-pass (funcall (revolver self) observer)))
 
+(defmethod operator-with-passfail-over-context ((self observable) (pass function))
+  "automatically unsubscribe all when source fail, over"
+  (make-instance 'observable
+                 :revolver
+                 (lambda (observer)
+                   (let* ((context (fail-over-context))
+                          (observer (funcall pass observer context))
+                          (ob (source-over context (source-passfail context observer)))
+                          (source (subscribe-unsafe self ob)))
+                     (if (isunsubscribed context)
+                         (unsubscribe source)
+                         (register-source context source))
+                     (lambda ()
+                       (unsubscribe-all context))))))
+
+(defmethod operator-with-passfail-holdover-context ((self observable) (pass function))
+  "automatically unsubscribe all when source fail, source over while all inner over"
+  (make-instance 'observable
+                 :revolver
+                 (lambda (observer)
+                   (let* ((context (fail-over-context))
+                          (observer (funcall pass observer context))
+                          (ob (source-holdover context (source-passfail context observer)))
+                          (source (subscribe-unsafe self ob)))
+                     (if (isunsubscribed context)
+                         (unsubscribe source)
+                         (register-source context source))
+                     (lambda ()
+                       (unsubscribe-all context))))))
+
 (defclass subscriptions-context ()
   ((subscriptions :initform nil
                   :accessor subscriptions
@@ -284,6 +314,92 @@
     (if (subscriptionp source)
         (unsubscribe source)))
   (map nil (lambda (sub) (unsubscribe sub)) (reverse (subscriptions self))))
+
+(defclass fail-context (subscriptions-context)
+  ((isfail :initform nil
+           :accessor isfail
+           :type boolean)))
+
+(defmethod fail-context ()
+  (make-instance 'fail-context))
+
+(defclass over-context (subscriptions-context)
+  ((isover :initform nil
+           :accessor isover
+           :type boolean)))
+
+(defmethod over-context ()
+  (make-instance 'over-context))
+
+(defclass fail-over-context (fail-context over-context)
+  ())
+
+(defmethod fail-over-context ()
+  (make-instance 'fail-over-context))
+
+(defmethod source-passfail ((context fail-context) (observer observer))
+  (observer :onnext
+            (lambda (value)
+              (unless (isfail context)
+                (next observer value)))
+            :onfail (lambda (reason)
+                      (fail observer reason)
+                      (unsubscribe-all context))
+            :onover (onover observer)))
+
+(defmethod source-over ((context over-context) (observer observer))
+  (observer :onnext (onnext observer)
+            :onfail (onfail observer)
+            :onover (lambda ()
+                      (setf (isover context) t)
+                      (over observer)
+                      (if (source context) (unsubscribe-all context)))))
+
+(defmethod source-holdover ((self observer) (context over-context))
+  (observer :onnext (onnext self)
+            :onfail (onfail self)
+            :onover (lambda ()
+                      (setf (isover context) t)
+                      (let ((active))
+                        (with-caslock (spinlock context)
+                          (setf active (> (length (subscriptions context)) 0)))
+                        (unless active
+                          (over self)
+                          (unsubscribe-all context))))))
+
+(defmethod inner-passfail ((context fail-context) (observer observer))
+  "inner fail will cause source fail"
+  (observer :onnext (onnext observer)
+            :onfail
+            (lambda (reason)
+              (setf (isfail context) t)
+              (fail observer reason))
+            :onover (onover observer)))
+
+(defmethod subscribe-inner-over ((self observable) (context over-context) (observer observer))
+  "source coult only over after all inner over"
+  (let* ((current)
+         (isover))
+    (setf current (subscribe-unsafe self (observer :onnext (onnext observer)
+                                                   :onfail (onfail observer)
+                                                   :onover
+                                                   (lambda ()
+                                                     (setf isover t)
+                                                     (if (isover context)
+                                                         (progn (over observer)
+                                                                (unsubscribe-all context))
+                                                         (progn (unregister context current)
+                                                                (if current
+                                                                    (unsubscribe current))))))))
+    (if isover
+        (unsubscribe current)
+        (register context current))
+    current))
+
+(defmethod subscribe-with-passfail-over-context ((self observable) (context fail-over-context) (observer observer))
+  "designed for customize operator
+   inner over will not cause source fail"
+  (subscribe-inner-over self context (inner-passfail context observer)))
 
 ;; operators
 ;; creation operators
@@ -453,18 +569,31 @@
 
 (defmethod throttle ((self observable) (observablefn function))
   "observablefn needs receive a value and return a observable"
-  (operator self
-            (lambda (observer)
-              (let ((disable))
-                (observer :onnext
-                          (lambda (value)
-                            (unless disable
-                              (setf disable t)
-                              (next observer value)
-                              (subscribe-unsafe (take (funcall observablefn value) 2)
-                                                (observer :onover (lambda () (setf disable nil))))))
-                          :onfail (onfail observer)
-                          :onover (onover observer))))))
+  (operator-with-passfail-over-context
+   self
+   (lambda (observer context)
+     (let ((disable))
+       (observer :onnext
+                 (lambda (value)
+                   (unless disable
+                     (setf disable t)
+                     (next observer value)
+                     (let ((current)
+                           (isnext))
+                       (setf current (subscribe-with-passfail-over-context
+                                      (funcall observablefn value)
+                                      context
+                                      (observer :onnext
+                                                (lambda (x)
+                                                  (declare (ignorable x))
+                                                  (setf disable nil)
+                                                  (setf isnext t)
+                                                  (if current
+                                                      (unsubscribe current))))))
+                       (if isnext
+                           (unsubscribe current)))))
+                 :onfail (onfail observer)
+                 :onover (onover observer))))))
 
 (defmethod throttletime ((self observable) (milliseconds number))
   (operator self
