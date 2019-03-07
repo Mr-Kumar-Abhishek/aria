@@ -398,7 +398,9 @@
 
 (defmethod subscribe-with-passfail-over-context ((self observable) (context fail-over-context) (observer observer))
   "designed for customize operator
-   inner over will not cause source fail"
+   inner fail will cause source fail
+   inner over will not cause source over
+   automatically manage inner subscriptions"
   (subscribe-inner-over self context (inner-passfail context observer)))
 
 ;; operators
