@@ -194,20 +194,23 @@
   self)
 
 (defmethod subscribe ((self observable) (observer observer))
-  (let* ((isover)
-         (isfail)
+  (let* ((isstop)
          (subscription)
-         (ob (observer :onnext (onnext observer)
+         (ob (observer :onnext (lambda (value)
+                                 (unless isstop
+                                   (next observer value)))
                        :onfail (lambda (reason)
-                                 (setf isfail t)
-                                 (fail observer reason)
-                                 (unsubscribe subscription))
+                                 (unless isstop
+                                   (setf isstop t)
+                                   (fail observer reason)
+                                   (unsubscribe subscription)))
                        :onover (lambda ()
-                                 (setf isover t)
-                                 (over observer)
-                                 (unsubscribe subscription)))))
+                                 (unless isstop
+                                   (setf isstop t)
+                                   (over observer)
+                                   (unsubscribe subscription))))))
     (setf subscription (subscription-pass (funcall (revolver self) ob)))
-    (if (or isover isfail)
+    (if isstop
         (unsubscribe subscription))
     subscription))
 
