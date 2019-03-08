@@ -47,6 +47,7 @@
                 :single
                 :skip
                 :skipuntil
+                :skipwhile
                 :tail
                 :take
                 :throttle
@@ -486,6 +487,13 @@
                          :onfail (lambda (reason) (push reason collector) (signal-semaphore semaphore))))
     (join-thread th)
     (is (equal (reverse collector) (list "fail" "source unsub" "inner unsub")))))
+
+(test skipwhile
+  (let ((collector)
+        (o (of 1 2 3 4 5 6)))
+    (subscribe (skipwhile o (lambda (value) (eq 0 (mod value 2))))
+               (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 2 4 6)))))
 
 (test tail
   (let ((o (of 1 2 3 4))
