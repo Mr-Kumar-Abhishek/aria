@@ -55,6 +55,7 @@
            :single
            :skip
            :skipuntil
+           :skipwhile
            :tail
            :take
            :throttle
@@ -573,36 +574,45 @@
                           :onover (onover observer))))))
 
 (defmethod skipuntil ((self observable) (notifier observable))
-  (operator-with-passfail-over-context
+  (operator-with-subscriptions-context
    self
    (lambda (observer context)
      (let ((notify)
-           (current)
-           (isfail))
+           (current))
        (setf current (subscribe-unsafe
                       notifier
-                      (source-over context
-                                   (observer :onnext
-                                             (lambda (value)
-                                               (declare (ignorable value))
-                                               (unless notify
-                                                 (setf notify t)
-                                                 (unsubscribe current)))
-                                             :onfail
-                                             (lambda (reason)
-                                               (declare (ignorable reason))
-                                               (unless notify
-                                                 (setf isfail t)
-                                                 (fail observer reason)
-                                                 (unsubscribe current)))))))
-       (if (or notify isfail)
-           (unsubscribe current))
+                      (observer :onnext
+                                (lambda (value)
+                                  (declare (ignorable value))
+                                  (unless notify
+                                    (setf notify t)
+                                    (unsubscribe current)))
+                                :onfail
+                                (lambda (reason)
+                                  (unless notify
+                                    (fail observer reason)))
+                                :onover
+                                (lambda ()
+                                  (unsubscribe current)))))
+       (if notify
+           (unsubscribe current)
+           (register context current))
        (observer :onnext
                  (lambda (value)
                    (if notify
                        (next observer value)))
                  :onfail (onfail observer)
                  :onover (onover observer))))))
+
+(defmethod skipwhile ((self observable) (predicate function))
+  (operator self
+            (lambda (observer)
+              (observer :onnext
+                        (lambda (value)
+                          (if (funcall predicate value)
+                              (next observer value)))
+                        :onfail (onfail observer)
+                        :onover (onover observer)))))
 
 (defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied))
   "only take last value which compliance with predicate from next
