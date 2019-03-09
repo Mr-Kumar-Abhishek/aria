@@ -246,6 +246,14 @@
            :accessor parent
            :type subscriber)))
 
+(defclass context ()
+  ((subscriber :initform nil
+               :accessor subscriber
+               :type (or null inner-subscriber))))
+
+(defmethod context ()
+  (make-instance 'context))
+
 (defmethod next ((self inner-subscriber) value)
   (funcall (onnext self) value))
 
@@ -269,7 +277,7 @@
           (lambda (reason)
             (unless (or isclose (isstop subscriber))
               (with-caslock-once caslock
-                (setf isclose t)
+                (setf isclose t) (print "fuck here") (print (dofail subscriber))
                 (let ((dofail (dofail subscriber)))
                   (if (functionp dofail) (funcall dofail reason)))
                 (unsubscribe subscriber)))))
@@ -302,13 +310,6 @@
       (unsubscribe subscriber))
   subscriber)
 
-(defclass context ()
-  ((subscriber :initform nil
-               :accessor subscriber
-               :type (or null inner-subscriber))))
-
-(defmethod context ()
-  (make-instance 'context))
 #|
 (defmethod within-outer-subscriber ((self observable) (pass function))
   (let* ((context (context))
@@ -356,10 +357,14 @@
 (defmethod unsubscribe ((self inner-subscriber))
   (with-caslock (spinlock self)
     (setf (isstop self) t))
-  (let* ((parent (parent self))) ;; unsubscribe the parent in a high priority
-    (if (and (isstop parent)
-             (source parent)
-             (isunsubscribed (source parent)))
+  (let* ((parent (parent self))
+         (needunsub)) ;; unsubscribe the parent in a high priority
+    (if (isstop parent)
+        (if (and (source parent)
+                 (isunsubscribed (source parent)))
+            (setf needunsub t))
+        (setf needunsub t))
+    (if needunsub
         (progn (unregister parent self)
                (unsubscribe (source self))
                (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))))))
@@ -763,7 +768,7 @@
                         (unsubscribe context)))
                     :onfail
                     (lambda (reason)
-                            (fail subscriber reason)))))
+                      (fail subscriber reason)))))
        (observer :onnext
                  (lambda (value)
                    (if notify
@@ -915,16 +920,17 @@
        (observer :onnext
                  (lambda (value)
                    (if prev
-                       (unsubscribe (unregister subscriber prev)))
+                       (unsubscribe prev))
                    (setf prev (within-inner-subscriber
                                (funcall observablefn value)
                                subscriber
                                (lambda (context)
+                                 (declare (ignorable context))
                                  (observer :onnext
                                            (lambda (value)
-                                             (next context value))
+                                             (next (self subscriber) value))
                                            :onfail
                                            (lambda (reason)
-                                             (fail context reason)))))))
+                                             (fail subscriber reason)))))))
                  :onfail (onfail subscriber)
                  :onover (onover subscriber))))))
