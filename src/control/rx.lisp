@@ -250,7 +250,6 @@
   (funcall (onnext self) value))
 
 (defmethod fail ((self inner-subscriber) reason)
-  (print "op fail") (print (dofail (parent self)))
   (funcall (onfail self) reason))
 
 (defmethod over ((self inner-subscriber))
@@ -267,7 +266,7 @@
                               (if (functionp donext) (funcall donext value)))
                 (error (reason) (fail subscriber reason))))))
     (setf (onfail subscriber)
-          (lambda (reason) (print "standard process fail")
+          (lambda (reason)
             (unless (or isclose (isstop subscriber))
               (with-caslock-once caslock
                 (setf isclose t)
@@ -292,8 +291,6 @@
 
 (defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
   (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
-  (print "isstop")
-  (print (isstop subscriber))
   (if (isstop subscriber)
       (unsubscribe subscriber))
   subscriber)
@@ -303,10 +300,6 @@
   (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
   (if (isstop subscriber)
       (unsubscribe subscriber))
-  (print "isstop inner")
-  (print (isstop subscriber))
-  (print "is source inner")
-  (print (source subscriber))
   subscriber)
 
 (defclass context ()
@@ -329,7 +322,7 @@
                                                  (lambda (value)
                                                    (next parent value))
                                                  :onfail
-                                                 (lambda (reason) (print parent)
+                                                 (lambda (reason)
                                                    (fail parent reason))
                                                  :onover
                                                  (lambda ()
@@ -357,7 +350,7 @@
 (defmethod unsubscribe ((self subscriber))
   (with-caslock (spinlock self)
     (setf (isstop self) t))
-  (unsubscribe (source self)) (print "after unsubscribe") (print (source self))
+  (unsubscribe (source self))
   (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self))))
 
 (defmethod unsubscribe ((self inner-subscriber))
@@ -373,9 +366,7 @@
 (defmethod operator-with-subscriber ((self observable) (pass function))
   (observable (lambda (observer)
                 (let ((subscriber (normal-subscriber observer)))
-                  (print "before combine")
                   (combine subscriber (funcall pass subscriber))
-                  (print "after combine") (print (isstop subscriber))
                   (subscribe-subscriber self subscriber)
                   (lambda ()
                     (unsubscribe subscriber))))))
@@ -767,13 +758,13 @@
                         (setf notify t)
                         (unsubscribe context)))
                     :onfail
-                    (lambda (reason) (print "inner fail") (print subscriber)
+                    (lambda (reason)
                             (fail subscriber reason)))))
        (observer :onnext
-                 (lambda (value) (print "source next")
+                 (lambda (value)
                    (if notify
                        (next (self subscriber) value)))
-                 :onfail (lambda (reason) (print "source fail") (funcall (onfail subscriber) reason))
+                 :onfail (lambda (reason) (funcall (onfail subscriber) reason))
                  :onover (onover subscriber))))))
 
 (defmethod skipwhile ((self observable) (predicate function))
@@ -927,7 +918,6 @@
                                (lambda (context)
                                  (observer :onnext
                                            (lambda (value)
-                                             (print (subscriber context))
                                              (next context value))
                                            :onfail
                                            (lambda (reason)
