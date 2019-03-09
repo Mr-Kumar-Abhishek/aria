@@ -169,7 +169,8 @@
                                (funcall onover))))))
 
 (defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id))
-  (wrap-observer :onnext onnext :onfail onfail :onover onover))
+  ;(wrap-observer :onnext onnext :onfail onfail :onover onover)
+  (make-instance 'observer :onnext onnext :onfail onfail :onover onover))
 
 (defmethod broadcast ((self subject) (method function))
   (lambda (&rest args)
@@ -213,6 +214,122 @@
     (if isstop
         (unsubscribe subscription))
     subscription))
+
+(defclass subscriber (observer)
+  ((self :initarg :self
+         :accessor self
+         :type observer)
+   (isstop :initform nil
+           :accessor isstop
+           :type boolean)
+   (spinlock :initform (caslock)
+             :accessor spinlock
+             :type caslock)
+   (source :initform nil
+           :accessor source
+           :type (or null subscription))
+   (inners :initform nil
+           :accessor inners
+           :type list)
+   (donext :initform nil
+           :accessor donext
+           :type (or null function))
+   (dofail :initform nil
+           :accessor dofail
+           :type (or null function))
+   (doover :initform nil
+           :accessor doover
+           :type (or null function))))
+
+(defclass inner-subscriber (subscriber)
+  ((parent :initarg :parent
+           :accessor parent
+           :type subscriber)))
+
+(defmethod subscriber ((self observer))
+  (let ((isclose)
+        (caslock (caslock))
+        (subscriber (make-instance 'subscriber :self self)))
+    (setf (onnext subscriber)
+          (lambda (value)
+            (unless (or isclose (isstop subscriber))
+              (handler-case (let ((donext (donext subscriber)))
+                              (if (functionp donext) (funcall donext value)))
+                (error (reason) (fail subscriber reason))))))
+    (setf (onfail subscriber)
+          (lambda (reason)
+            (unless (or isclose (isstop subscriber))
+              (with-caslock-once caslock
+                (setf isclose t)
+                (let ((dofail (dofail subscriber)))
+                  (if (functionp dofail) (funcall dofail reason)))
+                (unsubscribe subscriber)))))
+    (setf (onover subscriber)
+          (lambda ()
+            (unless (or isclose (isstop subscriber))
+              (with-caslock-once caslock
+                (setf isclose t)
+                (let ((doover (doover subscriber)))
+                  (if (functionp doover) (funcall doover)))
+                (unsubscribe subscriber)))))
+    subscriber))
+
+(defmethod subscribe-outer ((self observable) (subscriber subscriber))
+  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
+  subscriber)
+
+(defclass context ()
+  ((subscriber :initform nil
+               :accessor subscriber
+               :type (or null subscriber))))
+
+(defmethod context ()
+  (make-instance 'context))
+
+(defmethod within-subscriber ((self observable) (pass function))
+  (let ((context (context)))
+    (setf (subscriber context) (subscribe-outer self (combine (subscriber (observer)) (funcall pass context))))))
+
+(defmethod register ((self subscriber) (inner subscriber))
+  (with-caslock (spinlock self)
+    (if (isstop self)
+        (unsubscribe inner)
+        (push inner (inners self)))))
+
+(defmethod unregister ((self subscriber) (inner subscriber))
+  (with-caslock (spinlock self)
+    (unless (isstop self)
+      (setf (inners self) (remove inner (inners self))))))
+
+(defmethod unregister ((self subscriber) (subscription null)))
+
+(defmethod unsubscribe ((self subscriber))
+  (with-caslock (spinlock self)
+    (setf (isstop self) t))
+  (unsubscribe (source self))
+  (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self))))
+
+(defmethod unsubscribe ((self context))
+  (unsubscribe (subscriber self)))
+
+(defmethod operator-with-subscriber ((self observable) (pass function))
+  (make-instance 'observable
+                 :revolver
+                 (lambda (observer)
+                   (let ((subscriber (subscriber observer)))
+                     (combine subscriber (funcall pass subscriber))
+                     (subscribe-outer self subscriber)
+                     (lambda ()
+                       (unsubscribe subscriber))))))
+
+(defmethod combine ((self subscriber) (observer observer))
+  (setf (donext self) (onnext observer))
+  (setf (dofail self) (onfail observer))
+  (setf (doover self) (onover observer))
+  self)
+
+(defmethod combine ((self subscriber) (subscriber subscriber))
+  (error "not support"))
 
 (defmethod subscribe ((self observable) (onnext function))
   (subscribe self (observer :onnext onnext)))
@@ -577,35 +694,29 @@
                           :onover (onover observer))))))
 
 (defmethod skipuntil ((self observable) (notifier observable))
-  (operator-with-subscriptions-context
+  (operator-with-subscriber
    self
-   (lambda (observer context)
-     (let ((notify)
-           (current))
-       (setf current (subscribe-unsafe
-                      notifier
-                      (observer :onnext
-                                (lambda (value)
-                                  (declare (ignorable value))
-                                  (unless notify
-                                    (setf notify t)
-                                    (unsubscribe current)))
-                                :onfail
-                                (lambda (reason)
-                                  (unless notify
-                                    (fail observer reason)))
-                                :onover
-                                (lambda ()
-                                  (unsubscribe current)))))
-       (if notify
-           (unsubscribe current)
-           (register context current))
+   (lambda (subscriber)
+     (let ((notify))
+       (register subscriber
+                 (within-subscriber
+                  notifier
+                  (lambda (context)
+                    (observer :onnext
+                              (lambda (value)
+                                (declare (ignorable value))
+                                (unless notify
+                                  (setf notify t)
+                                  (unsubscribe context)))
+                              :onfail
+                              (lambda (reason)
+                                (fail subscriber reason))))))
        (observer :onnext
                  (lambda (value)
                    (if notify
-                       (next observer value)))
-                 :onfail (onfail observer)
-                 :onover (onover observer))))))
+                       (next (self subscriber) value)))
+                 :onfail (onfail (self subscriber))
+                 :onover (onover (self subscriber)))))))
 
 (defmethod skipwhile ((self observable) (predicate function))
   (operator self
