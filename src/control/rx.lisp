@@ -356,9 +356,13 @@
 (defmethod unsubscribe ((self inner-subscriber))
   (with-caslock (spinlock self)
     (setf (isstop self) t))
-  (unregister (parent self) self)
-  (unsubscribe (source self))
-  (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self))))
+  (let* ((parent (parent self))) ;; unsubscribe the parent in a high priority
+    (if (and (isstop parent)
+             (source parent)
+             (isunsubscribed (source parent)))
+        (progn (unregister parent self)
+               (unsubscribe (source self))
+               (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))))))
 
 (defmethod unsubscribe ((self context))
   (unsubscribe (subscriber self)))
