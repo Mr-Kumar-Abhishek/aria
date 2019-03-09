@@ -437,6 +437,38 @@
     (is (equal (reverse collector) (list 1 2 3 4)))))
 
 (test skipuntil
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 4)
+                            (next observer x))
+                          (fail observer "source fail")
+                          (lambda ()
+                            (push "source unsub" collector))))))
+    (subscribe (skipuntil o (observable (lambda (observer)
+                                         (next observer 4)
+                                         (lambda ()
+                                           (push "inner unsub" collector)))))
+              (observer :onnext (lambda (value) (push value collector))
+                        :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "inner unsub" 0 1 2 3 "source fail" "source unsub")))))
+
+(test skipuntil-inner-fail
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (dotimes (x 4)
+                            (next observer x))
+                          (fail observer "source fail")
+                          (lambda ()
+                            (push "source unsub" collector))))))
+    (subscribe (skipuntil o (observable (lambda (observer)
+                                         (fail observer "inner fail")
+                                         (lambda ()
+                                           (push "inner unsub" collector)))))
+              (observer :onnext (lambda (value) (push value collector))
+                        :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "inner unsub" "inner fail" "source unsub")))))
+
+(test skipuntil-async
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 4) (wait-on-semaphore semaphore :timeout 0.2)))))
          (collector)
@@ -462,7 +494,7 @@
     (join-thread th)
     (is (equal (reverse collector) (list "inner unsub" 1 2 3)))))
 
-(test skipuntil-inner-fail
+(test skipuntil-async-inner-fail
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore :timeout 0.2)))))
          (collector)

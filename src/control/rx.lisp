@@ -416,6 +416,15 @@
 (defmethod notifyover ((self subscriber))
   (over (destination self)))
 
+(defmethod on-notifynext ((self subscriber))
+  (onnext (destination self)))
+
+(defmethod on-notifyfail ((self subscriber))
+  (onfail (destination self)))
+
+(defmethod on-notifyover ((self subscriber))
+  (onover (destination self)))
+
 (defmethod operator-with-subscriber ((self observable) (pass function))
   (observable (lambda (observer)
                 (let ((subscriber (normal-subscriber observer)))
@@ -794,8 +803,8 @@
                  (lambda (value)
                    (if notify
                        (notifynext subscriber value)))
-                 :onfail (lambda (reason) (notifyfail subscriber reason))
-                 :onover (lambda () (notifyover subscriber)))))))
+                 :onfail (on-notifyfail subscriber)
+                 :onover (on-notifyover subscriber))))))
 
 (defmethod skipwhile ((self observable) (predicate function))
   (operator self
@@ -912,12 +921,12 @@
                                   (lambda (context)
                                     (observer :onnext
                                               (lambda (value)
-                                                (next context value))
+                                                (next subscriber value))
                                               :onfail
                                               (lambda (reason)
-                                                (fail context reason)))))))))
-               :onfail (onfail subscriber)
-               :onover (onover subscriber)))))
+                                                (fail subscriber reason)))))))))
+               :onfail (on-notifyfail subscriber)
+               :onover (on-notifyover subscriber)))))
 
 (defmethod mapper ((self observable) (function function))
   (operator self
@@ -953,5 +962,5 @@
                                            :onfail
                                            (lambda (reason)
                                              (fail subscriber reason)))))))
-                 :onfail (onfail subscriber)
-                 :onover (onover subscriber))))))
+                 :onfail (on-notifyfail subscriber)
+                 :onover (on-notifyover subscriber))))))
