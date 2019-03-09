@@ -168,7 +168,7 @@
                                (setf complete t)
                                (funcall onover))))))
 
-(defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id))
+(defmethod observer (&key onnext onfail onover)
   ;(wrap-observer :onnext onnext :onfail onfail :onover onover)
   (make-instance 'observer :onnext onnext :onfail onfail :onover onover))
 
@@ -228,6 +228,9 @@
    (inners :initform nil
            :accessor inners
            :type list)
+   (self :initarg :self
+         :accessor self
+         :type observer)
    (donext :initform nil
            :accessor donext
            :type (or null function))
@@ -238,10 +241,20 @@
            :accessor doover
            :type (or null function))))
 
-(defclass outer-subscriber (subscriber)
-  ((self :initarg :self
-         :accessor self
-         :type observer)))
+(defclass inner-subscriber (subscriber)
+  ((parent :initarg :parent
+           :accessor parent
+           :type subscriber)))
+
+(defmethod next ((self inner-subscriber) value)
+  (funcall (onnext self) value))
+
+(defmethod fail ((self inner-subscriber) reason)
+  (print "op fail") (print (dofail (parent self)))
+  (funcall (onfail self) reason))
+
+(defmethod over ((self inner-subscriber))
+  (funcall (onover self)))
 
 (defmethod make-subscriber ((self subscriber))
   (let ((isclose)
@@ -254,7 +267,7 @@
                               (if (functionp donext) (funcall donext value)))
                 (error (reason) (fail subscriber reason))))))
     (setf (onfail subscriber)
-          (lambda (reason)
+          (lambda (reason) (print "standard process fail")
             (unless (or isclose (isstop subscriber))
               (with-caslock-once caslock
                 (setf isclose t)
@@ -271,28 +284,60 @@
                 (unsubscribe subscriber)))))
     subscriber))
 
-(defmethod empty-subscriber ()
-  (make-subscriber (make-instance 'subscriber)))
+(defmethod normal-subscriber ((self observer))
+  (make-subscriber (make-instance 'subscriber :self self)))
 
-(defmethod outer-subscriber ((self observer))
-  (make-subscriber (make-instance 'outer-subscriber :self self)))
+(defmethod inner-subscriber ((self observer) (parent subscriber))
+  (make-subscriber (make-instance 'inner-subscriber :self self :parent parent)))
 
-(defmethod subscribe-outer ((self observable) (subscriber subscriber))
+(defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
   (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
+  (print "isstop")
+  (print (isstop subscriber))
+  (if (isstop subscriber)
+      (unsubscribe subscriber))
+  subscriber)
+
+(defmethod subscribe-inner ((self observable) (subscriber inner-subscriber))
+  (register (parent subscriber) subscriber)
+  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
+  (if (isstop subscriber)
+      (unsubscribe subscriber))
+  (print "isstop inner")
+  (print (isstop subscriber))
+  (print "is source inner")
+  (print (source subscriber))
   subscriber)
 
 (defclass context ()
   ((subscriber :initform nil
                :accessor subscriber
-               :type (or null subscriber))))
+               :type (or null inner-subscriber))))
 
 (defmethod context ()
   (make-instance 'context))
-
-(defmethod within-subscriber ((self observable) (pass function))
+#|
+(defmethod within-outer-subscriber ((self observable) (pass function))
   (let* ((context (context))
          (observer (funcall pass context)))
-    (setf (subscriber context) (subscribe-outer self (combine (empty-subscriber) observer)))))
+    (setf (subscriber context) (subscribe-subscriber self (combine (empty-subscriber) observer)))))
+|#
+(defmethod within-inner-subscriber ((self observable) (parent subscriber) (pass function))
+  (let* ((context (context))
+         (observer (funcall pass context))
+         (subscriber (inner-subscriber (observer :onnext
+                                                 (lambda (value)
+                                                   (next parent value))
+                                                 :onfail
+                                                 (lambda (reason) (print parent)
+                                                   (fail parent reason))
+                                                 :onover
+                                                 (lambda ()
+                                                   (over parent)))
+                                       parent)))
+    (setf (subscriber context) subscriber)
+    (subscribe-inner self (combine subscriber observer))
+    subscriber))
 
 (defmethod register ((self subscriber) (inner subscriber))
   (with-caslock (spinlock self)
@@ -312,6 +357,13 @@
 (defmethod unsubscribe ((self subscriber))
   (with-caslock (spinlock self)
     (setf (isstop self) t))
+  (unsubscribe (source self)) (print "after unsubscribe") (print (source self))
+  (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self))))
+
+(defmethod unsubscribe ((self inner-subscriber))
+  (with-caslock (spinlock self)
+    (setf (isstop self) t))
+  (unregister (parent self) self)
   (unsubscribe (source self))
   (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self))))
 
@@ -319,14 +371,14 @@
   (unsubscribe (subscriber self)))
 
 (defmethod operator-with-subscriber ((self observable) (pass function))
-  (make-instance 'observable
-                 :revolver
-                 (lambda (observer)
-                   (let ((subscriber (outer-subscriber observer)))
-                     (combine subscriber (funcall pass subscriber))
-                     (subscribe-outer self subscriber)
-                     (lambda ()
-                       (unsubscribe subscriber))))))
+  (observable (lambda (observer)
+                (let ((subscriber (normal-subscriber observer)))
+                  (print "before combine")
+                  (combine subscriber (funcall pass subscriber))
+                  (print "after combine") (print (isstop subscriber))
+                  (subscribe-subscriber self subscriber)
+                  (lambda ()
+                    (unsubscribe subscriber))))))
 
 (defmethod combine ((self subscriber) (observer observer))
   (setf (donext self) (onnext observer))
@@ -704,25 +756,25 @@
    self
    (lambda (subscriber)
      (let ((notify))
-       (register subscriber
-                 (within-subscriber
-                  notifier
-                  (lambda (context)
-                    (observer :onnext
-                              (lambda (value)
-                                (declare (ignorable value))
-                                (unless notify
-                                  (setf notify t)
-                                  (unsubscribe context)))
-                              :onfail
-                              (lambda (reason)
-                                (fail subscriber reason))))))
+       (within-inner-subscriber
+        notifier
+        subscriber
+        (lambda (context)
+          (observer :onnext
+                    (lambda (value)
+                      (declare (ignorable value))
+                      (unless notify
+                        (setf notify t)
+                        (unsubscribe context)))
+                    :onfail
+                    (lambda (reason) (print "inner fail") (print subscriber)
+                            (fail subscriber reason)))))
        (observer :onnext
-                 (lambda (value)
+                 (lambda (value) (print "source next")
                    (if notify
                        (next (self subscriber) value)))
-                 :onfail (onfail (self subscriber))
-                 :onover (onover (self subscriber)))))))
+                 :onfail (lambda (reason) (print "source fail") (funcall (onfail subscriber) reason))
+                 :onover (onover subscriber))))))
 
 (defmethod skipwhile ((self observable) (predicate function))
   (operator self
@@ -821,23 +873,30 @@
   "observablefn needs receive a value from next and return a observable
    flatmap will hold all subscriptions from observablefn
    concurrent could limit max size of hold subscriptions"
-  (operator-with-passfail-holdover-context
+  (operator-with-subscriber
    self
-   (lambda (observer context)
+   (lambda (subscriber)
      (observer :onnext
                (lambda (value)
                  (let ((restrict))
                    (unless (< concurrent 0)
-                     (with-caslock (spinlock context)
-                       (unless (< (length (subscriptions context)) concurrent)
+                     (with-caslock (spinlock subscriber)
+                       (unless (< (length ( context)) concurrent)
                          (setf restrict t))))
-                   (unless restrict
-                     (subscribe-with-passfail-over-context
-                      (funcall observablefn value)
-                      context
-                      observer))))
-               :onfail (onfail observer)
-               :onover (onover observer)))))
+                   (if (not restrict)
+                       (register subscriber
+                                 (within-inner-subscriber
+                                  (funcall observablefn value)
+                                  subscriber
+                                  (lambda (context)
+                                    (observer :onnext
+                                              (lambda (value)
+                                                (next context value))
+                                              :onfail
+                                              (lambda (reason)
+                                                (fail context reason)))))))))
+               :onfail (onfail subscriber)
+               :onover (onover subscriber)))))
 
 (defmethod mapper ((self observable) (function function))
   (operator self
@@ -862,16 +921,16 @@
                  (lambda (value)
                    (if prev
                        (unsubscribe (unregister subscriber prev)))
-                   (setf prev (register subscriber
-                                        (within-subscriber
-                                         (funcall observablefn value)
-                                         (lambda (context)
-                                           (declare (ignorable context))
-                                           (observer :onnext
-                                                     (lambda (value)
-                                                       (next (self subscriber) value))
-                                                     :onfail
-                                                     (lambda (reason)
-                                                       (fail subscriber reason))))))))
-                 :onfail (onfail (self subscriber))
-                 :onover (onover (self subscriber)))))))
+                   (setf prev (within-inner-subscriber
+                               (funcall observablefn value)
+                               subscriber
+                               (lambda (context)
+                                 (observer :onnext
+                                           (lambda (value)
+                                             (print (subscriber context))
+                                             (next context value))
+                                           :onfail
+                                           (lambda (reason)
+                                             (fail context reason)))))))
+                 :onfail (onfail subscriber)
+                 :onover (onover subscriber))))))
