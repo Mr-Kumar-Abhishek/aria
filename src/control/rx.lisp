@@ -216,10 +216,7 @@
     subscription))
 
 (defclass subscriber (observer)
-  ((self :initarg :self
-         :accessor self
-         :type observer)
-   (isstop :initform nil
+  ((isstop :initform nil
            :accessor isstop
            :type boolean)
    (spinlock :initform (caslock)
@@ -241,15 +238,15 @@
            :accessor doover
            :type (or null function))))
 
-(defclass inner-subscriber (subscriber)
-  ((parent :initarg :parent
-           :accessor parent
-           :type subscriber)))
+(defclass outer-subscriber (subscriber)
+  ((self :initarg :self
+         :accessor self
+         :type observer)))
 
-(defmethod subscriber ((self observer))
+(defmethod make-subscriber ((self subscriber))
   (let ((isclose)
-        (caslock (caslock))
-        (subscriber (make-instance 'subscriber :self self)))
+        (subscriber self)
+        (caslock (caslock)))
     (setf (onnext subscriber)
           (lambda (value)
             (unless (or isclose (isstop subscriber))
@@ -274,6 +271,12 @@
                 (unsubscribe subscriber)))))
     subscriber))
 
+(defmethod empty-subscriber ()
+  (make-subscriber (make-instance 'subscriber)))
+
+(defmethod outer-subscriber ((self observer))
+  (make-subscriber (make-instance 'outer-subscriber :self self)))
+
 (defmethod subscribe-outer ((self observable) (subscriber subscriber))
   (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
   subscriber)
@@ -287,19 +290,22 @@
   (make-instance 'context))
 
 (defmethod within-subscriber ((self observable) (pass function))
-  (let ((context (context)))
-    (setf (subscriber context) (subscribe-outer self (combine (subscriber (observer)) (funcall pass context))))))
+  (let* ((context (context))
+         (observer (funcall pass context)))
+    (setf (subscriber context) (subscribe-outer self (combine (empty-subscriber) observer)))))
 
 (defmethod register ((self subscriber) (inner subscriber))
   (with-caslock (spinlock self)
     (if (isstop self)
         (unsubscribe inner)
-        (push inner (inners self)))))
+        (push inner (inners self))))
+  inner)
 
 (defmethod unregister ((self subscriber) (inner subscriber))
   (with-caslock (spinlock self)
     (unless (isstop self)
-      (setf (inners self) (remove inner (inners self))))))
+      (setf (inners self) (remove inner (inners self)))))
+  inner)
 
 (defmethod unregister ((self subscriber) (subscription null)))
 
@@ -316,7 +322,7 @@
   (make-instance 'observable
                  :revolver
                  (lambda (observer)
-                   (let ((subscriber (subscriber observer)))
+                   (let ((subscriber (outer-subscriber observer)))
                      (combine subscriber (funcall pass subscriber))
                      (subscribe-outer self subscriber)
                      (lambda ()
@@ -848,18 +854,24 @@
                         :onover (onover observer)))))
 
 (defmethod switchmap ((self observable) (observablefn function))
-  (operator-with-passfail-holdover-context
+  (operator-with-subscriber
    self
-   (lambda (observer context)
+   (lambda (subscriber)
      (let ((prev))
        (observer :onnext
                  (lambda (value)
                    (if prev
-                       (progn (unregister context prev)
-                              (unsubscribe prev)))
-                   (setf prev (subscribe-with-passfail-over-context
-                               (funcall observablefn value)
-                               context
-                               observer)))
-                 :onfail (onfail observer)
-                 :onover (onover observer))))))
+                       (unsubscribe (unregister subscriber prev)))
+                   (setf prev (register subscriber
+                                        (within-subscriber
+                                         (funcall observablefn value)
+                                         (lambda (context)
+                                           (declare (ignorable context))
+                                           (observer :onnext
+                                                     (lambda (value)
+                                                       (next (self subscriber) value))
+                                                     :onfail
+                                                     (lambda (reason)
+                                                       (fail subscriber reason))))))))
+                 :onfail (onfail (self subscriber))
+                 :onover (onover (self subscriber)))))))
