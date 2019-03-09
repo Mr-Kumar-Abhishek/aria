@@ -228,9 +228,6 @@
    (inners :initform nil
            :accessor inners
            :type list)
-   (self :initarg :self
-         :accessor self
-         :type observer)
    (donext :initform nil
            :accessor donext
            :type (or null function))
@@ -277,7 +274,7 @@
           (lambda (reason)
             (unless (or isclose (isstop subscriber))
               (with-caslock-once caslock
-                (setf isclose t) (print "fuck here") (print (dofail subscriber))
+                (setf isclose t) ;;(print "fuck here") (print (dofail subscriber))
                 (let ((dofail (dofail subscriber)))
                   (if (functionp dofail) (funcall dofail reason)))
                 (unsubscribe subscriber)))))
@@ -291,11 +288,11 @@
                 (unsubscribe subscriber)))))
     subscriber))
 
-(defmethod normal-subscriber ((self observer))
-  (make-subscriber (make-instance 'subscriber :self self)))
+(defmethod normal-subscriber ()
+  (make-subscriber (make-instance 'subscriber)))
 
-(defmethod inner-subscriber ((self observer) (parent subscriber))
-  (make-subscriber (make-instance 'inner-subscriber :self self :parent parent)))
+(defmethod inner-subscriber ((parent subscriber))
+(make-subscriber (make-instance 'inner-subscriber :parent parent)))
 
 (defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
   (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
@@ -319,16 +316,7 @@
 (defmethod within-inner-subscriber ((self observable) (parent subscriber) (pass function))
   (let* ((context (context))
          (observer (funcall pass context))
-         (subscriber (inner-subscriber (observer :onnext
-                                                 (lambda (value)
-                                                   (next parent value))
-                                                 :onfail
-                                                 (lambda (reason)
-                                                   (fail parent reason))
-                                                 :onover
-                                                 (lambda ()
-                                                   (over parent)))
-                                       parent)))
+         (subscriber (inner-subscriber parent)))
     (setf (subscriber context) subscriber)
     (subscribe-inner self (combine subscriber observer))
     subscriber))
@@ -371,16 +359,38 @@
 
 (defmethod unsubscribe ((self context))
   (unsubscribe (subscriber self)))
+#|
+(defmethod next ((self inner-subscriber) value)
+  (funcall (onnext self) value))
 
+(defmethod fail ((self inner-subscriber) reason)
+  (funcall (onfail self) reason))
+
+(defmethod over ((self inner-subscriber))
+  (funcall (onover self)))
+
+(defmethod next ((self subscriber) value)
+  (next (self self) value))
+
+(defmethod fail ((self subscriber) reason)
+  (fail (self self) reason))
+
+(defmethod over ((self subscriber))
+  (over (self self)))
+|#
 (defmethod operator-with-subscriber ((self observable) (pass function))
   (observable (lambda (observer)
-                (let ((subscriber (normal-subscriber observer)))
-                  (combine subscriber (funcall pass subscriber))
+                ;;(print observer) (print (onfail observer))
+                (let ((subscriber (normal-subscriber)))
+                  (combine subscriber observer)
+                  (funcall pass subscriber)
+                  ;;(print "onfail") (print (onfail subscriber)) (print "dofail") (print (dofail subscriber))
                   (subscribe-subscriber self subscriber)
                   (lambda ()
                     (unsubscribe subscriber))))))
 
 (defmethod combine ((self subscriber) (observer observer))
+  ;;(print "combine onfail observer") (print (onfail observer))
   (setf (donext self) (onnext observer))
   (setf (dofail self) (onfail observer))
   (setf (doover self) (onover observer))
@@ -768,11 +778,12 @@
                         (unsubscribe context)))
                     :onfail
                     (lambda (reason)
+                      ;;(print "inner fail")
                       (fail subscriber reason)))))
        (observer :onnext
                  (lambda (value)
                    (if notify
-                       (next (self subscriber) value)))
+                       (next subscriber value)))
                  :onfail (onfail subscriber)
                  :onover (onover subscriber))))))
 
@@ -928,7 +939,7 @@
                                  (declare (ignorable context))
                                  (observer :onnext
                                            (lambda (value)
-                                             (next (self subscriber) value))
+                                             (next subscriber value))
                                            :onfail
                                            (lambda (reason)
                                              (fail subscriber reason)))))))
