@@ -768,7 +768,7 @@
                  (lambda (value)
                    (if notify
                        (next (self subscriber) value)))
-                 :onfail (lambda (reason) (funcall (onfail subscriber) reason))
+                 :onfail (onfail subscriber)
                  :onover (onover subscriber))))))
 
 (defmethod skipwhile ((self observable) (predicate function))
