@@ -958,9 +958,9 @@
                                         (notifyover (subscriber context)))))))))
                  :onfail (on-notifyfail subscriber)
                  :onover (lambda ()
+                           (setf isstop t)
                            (let ((ishold))
                              (with-caslock (spinlock subscriber)
-                               (setf isstop t)
                                (unless (eq (length (inners subscriber)) 0)
                                  (setf ishold t)))
                              (unless ishold
@@ -1005,14 +1005,11 @@
                                                (fail subscriber reason))
                                              :onover
                                              (lambda ()
-                                               (if isstop (notifyover subscriber))
+                                               (if isstop (over subscriber))
                                                (notifyover (subscriber context)))))))))
                  :onfail (lambda (reason)
-                           (unless isstop
-                             (setf isstop t)
-                             (notifyfail subscriber reason)))
+                           (notifyfail subscriber reason))
                  :onover (lambda ()
-                           (unless isstop
-                             (setf isstop t)
-                             (if (isstop prev)
-                                 (notifyover subscriber)))))))))
+                           (setf isstop t)
+                           (if (isstop prev)
+                               (notifyover subscriber))))))))
