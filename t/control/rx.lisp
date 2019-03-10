@@ -466,7 +466,7 @@
                                            (push "inner unsub" collector)))))
               (observer :onnext (lambda (value) (push value collector))
                         :onfail (lambda (reason) (push reason collector))))
-    (is (equal (reverse collector) (list "inner unsub" "inner fail" "source unsub")))))
+    (is (equal (reverse collector) (list "inner fail" "source unsub" "inner unsub")))))
 
 (test skipuntil-async
   (let* ((semaphore (make-semaphore))
