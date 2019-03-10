@@ -4,7 +4,7 @@
   (:use :cl)
   (:import-from :atomics
                 :cas)
-  (:import-from :aria.structure.miso-queue
+  (:import-from :aria.structure.mimo-queue
                 :queue
                 :make-queue
                 :en
@@ -144,13 +144,16 @@
   t)
 
 (defmethod next ((self observer) value)
-  (funcall (onnext self) value))
+  (funcall (onnext self) value)
+  nil)
 
 (defmethod fail ((self observer) reason)
-  (funcall (onfail self) reason))
+  (funcall (onfail self) reason)
+  nil)
 
 (defmethod over ((self observer))
-  (funcall (onover self)))
+  (funcall (onover self))
+  nil)
 
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
@@ -310,34 +313,31 @@
   (make-instance 'context))
 
 (defmethod make-subscriber ((self subscriber))
-  (let ((caslock (caslock)))
-    (setf (onnext self)
-          (lambda (value)
-            (if (iscombined self)
-                (unless (or (isclose self) (isstop self))
-                  (handler-case (let ((donext (donext self)))
-                                  (if (functionp donext) (funcall donext value)))
-                    (error (reason) (fail self reason))))
-                (en (buffers self) (nextbuffer value)))))
-    (setf (onfail self)
-          (lambda (reason)
-            (if (iscombined self)
-                (unless (or (isclose self) (isstop self))
-                  (with-caslock-once caslock
-                    (let ((dofail (dofail self)))
-                      (if (functionp dofail)
-                          (funcall dofail reason)))))
-                (en (buffers self) (failbuffer reason)))))
-    (setf (onover self)
-          (lambda ()
-            (if (iscombined self)
-                (unless (or (isclose self) (isstop self))
-                  (with-caslock-once caslock
-                    (let ((doover (doover self)))
-                      (if (functionp doover)
-                          (funcall doover)))))
-                (en (buffers self) (overbuffer)))))
-    self))
+  (setf (onnext self)
+        (lambda (value)
+          (if (iscombined self)
+              (unless (isstop self)
+                (handler-case (let ((donext (donext self)))
+                                (if (functionp donext) (funcall donext value)))
+                  (error (reason) (fail self reason))))
+              (en (buffers self) (nextbuffer value)))))
+  (setf (onfail self)
+        (lambda (reason)
+          (if (iscombined self)
+              (unless (isstop self)
+                (let ((dofail (dofail self)))
+                  (if (functionp dofail)
+                      (funcall dofail reason))))
+              (en (buffers self) (failbuffer reason)))))
+  (setf (onover self)
+        (lambda ()
+          (if (iscombined self)
+              (unless (isstop self)
+                (let ((doover (doover self)))
+                  (if (functionp doover)
+                      (funcall doover))))
+              (en (buffers self) (overbuffer)))))
+  self)
 
 (defmethod outer-subscriber ((self observer))
   (make-subscriber (make-instance 'outer-subscriber :destination self)))
@@ -407,49 +407,67 @@
 
 (defmethod notifynext ((self outer-subscriber) value)
   (unless (or (isclose self) (isstop self))
-    (next (destination self) value)))
+    (next (destination self) value))
+  nil)
 
 (defmethod notifyfail ((self outer-subscriber) reason)
   (unless (or (isclose self) (isstop self))
     (with-caslock-once (notifylock self)
       (setf (isclose self) t)
       (fail (destination self) reason)
-      (unsubscribe self))))
+      (unsubscribe self)))
+  nil)
 
 (defmethod notifyover ((self outer-subscriber))
   (unless (or (isclose self) (isstop self))
     (with-caslock-once (notifylock self)
       (setf (isclose self) t)
       (over (destination self))
-      (unsubscribe self))))
+      (unsubscribe self)))
+  nil)
 
 (defmethod notifynext ((self inner-subscriber) value)
-  (declare (ignorable self value)))
+  (declare (ignorable self value))
+  nil)
 
 (defmethod notifyfail ((self inner-subscriber) reason)
   (declare (ignorable reason))
   (unless (or (isclose self) (isstop self))
     (with-caslock-once (notifylock self)
       (setf (isclose self) t)
-      (unsubscribe self))))
+      (unsubscribe self)))
+  nil)
 
 (defmethod notifyover ((self inner-subscriber))
    (unless (or (isclose self) (isstop self))
     (with-caslock-once (notifylock self)
       (setf (isclose self) t)
-      (unsubscribe self))))
+      (unsubscribe self)))
+   nil)
 
-(defmethod on-notifynext ((self subscriber))
+(defmethod on-notifynext ((self outer-subscriber))
   (lambda (value)
     (notifynext self value)))
 
-(defmethod on-notifyfail ((self subscriber))
+(defmethod on-notifyfail ((self outer-subscriber))
   (lambda (reason)
     (notifyfail self reason)))
 
-(defmethod on-notifyover ((self subscriber))
+(defmethod on-notifyover ((self outer-subscriber))
   (lambda ()
     (notifyover self)))
+
+(defmethod on-notifynext ((self context))
+  (lambda (value)
+    (notifynext (subscriber self) value)))
+
+(defmethod on-notifyfail ((self context))
+  (lambda (reason)
+    (notifyfail (subscriber self) reason)))
+
+(defmethod on-notifyover ((self context))
+  (lambda ()
+    (notifyover (subscriber self))))
 
 (defmethod operator-with-subscriber ((self observable) (pass function))
   (observable (lambda (observer)
@@ -824,7 +842,9 @@
                         (unsubscribe context)))
                     :onfail
                     (lambda (reason)
-                      (fail subscriber reason)))))
+                      (fail subscriber reason))
+                    :onover
+                    (on-notifyover context))))
        (observer :onnext
                  (lambda (value)
                    (if notify
@@ -924,6 +944,14 @@
                           :onfail (onfail observer)
                           :onover (onover observer))))))
 
+(defmethod isrestrict ((self subscriber) (concurrent number))
+  (let ((restrict))
+    (unless (< concurrent 0)
+      (with-caslock (spinlock self)
+        (unless (< (length (inners self)) concurrent)
+          (setf restrict t))))
+    restrict))
+
 ;; transformation operators
 (defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1))
   "observablefn needs receive a value from next and return a observable
@@ -932,39 +960,41 @@
   (operator-with-subscriber
    self
    (lambda (subscriber)
-     (let ((isstop))
+     (let ((isstop)
+           (buffers (make-queue))
+           (caslock (caslock)))
        (observer :onnext
                  (lambda (value)
-                   (let ((restrict))
-                     (unless (< concurrent 0)
-                       (with-caslock (spinlock subscriber)
-                         (unless (< (length (inners subscriber)) concurrent)
-                           (setf restrict t))))
-                     (if (not restrict)
-                         (within-inner-subscriber
-                          (funcall observablefn value)
-                          subscriber
-                          (lambda (context)
-                            (observer :onnext
-                                      (lambda (value)
-                                        (notifynext subscriber value))
-                                      :onfail
-                                      (lambda (reason)
-                                        (fail subscriber reason))
-                                      :onover
-                                      (lambda ()
-                                        (if isstop
-                                            (over subscriber))
-                                        (notifyover (subscriber context)))))))))
+                   (if (isrestrict subscriber concurrent)
+                       (en buffers (nextbuffer value))
+                       (within-inner-subscriber
+                        (funcall observablefn value)
+                        subscriber
+                        (lambda (context)
+                          (observer :onnext
+                                    (lambda (value)
+                                      (notifynext subscriber value))
+                                    :onfail
+                                    (lambda (reason)
+                                      (fail subscriber reason))
+                                    :onover
+                                    (lambda ()
+                                      (with-caslock caslock
+                                        (if (and isstop (queue-empty-p buffers))
+                                            (notifyover subscriber))
+                                        (notifyover (subscriber context)))
+                                      (unless (queue-empty-p buffers)
+                                        (process-buffer subscriber (de buffers)))))))))
                  :onfail (on-notifyfail subscriber)
                  :onover (lambda ()
-                           (setf isstop t)
-                           (let ((ishold))
-                             (with-caslock (spinlock subscriber)
-                               (unless (eq (length (inners subscriber)) 0)
-                                 (setf ishold t)))
-                             (unless ishold
-                               (notifyover subscriber)))))))))
+                           (with-caslock caslock
+                             (setf isstop t)
+                             (let ((ishold))
+                               (with-caslock (spinlock subscriber)
+                                 (unless (eq (length (inners subscriber)) 0)
+                                   (setf ishold t)))
+                               (unless ishold
+                                 (notifyover subscriber))))))))))
 
 (defmethod mapper ((self observable) (function function))
   (operator self
