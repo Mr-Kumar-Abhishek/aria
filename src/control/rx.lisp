@@ -158,28 +158,14 @@
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
 
-(defmethod wrap-observer (&key (onnext #'id) (onfail #'id) (onover #'id))
-  (let ((complete)
-        (caslock (caslock)))
-    (make-instance 'observer
-                   :onnext (lambda (value)
-                             (unless complete
-                               (handler-case (funcall onnext value)
-                                 (error (reason) (with-caslock-once caslock
-                                                   (setf complete t)
-                                                   (funcall onfail reason))))))
-                   :onfail (lambda (reason)
-                             (with-caslock-once caslock
-                               (setf complete t)
-                               (funcall onfail reason)))
-                   :onover (lambda ()
-                             (with-caslock-once caslock
-                               (setf complete t)
-                               (funcall onover))))))
-
 (defmethod observer (&key onnext onfail onover)
-  ;(wrap-observer :onnext onnext :onfail onfail :onover onover)
   (make-instance 'observer :onnext onnext :onfail onfail :onover onover))
+
+(defmethod safe-observer ((self observer))
+  (make-instance 'observer
+                 :onnext (or (onnext self) #'id)
+                 :onfail (or (onfail self) #'id)
+                 :onover (or (onover self) #'id)))
 
 (defmethod broadcast ((self subject) (method function))
   (lambda (&rest args)
@@ -340,7 +326,7 @@
   self)
 
 (defmethod outer-subscriber ((self observer))
-  (make-subscriber (make-instance 'outer-subscriber :destination self)))
+  (make-subscriber (make-instance 'outer-subscriber :destination (safe-observer self))))
 
 (defmethod inner-subscriber ((parent subscriber))
   (make-subscriber (make-instance 'inner-subscriber :parent parent)))
