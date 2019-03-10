@@ -1006,7 +1006,7 @@
                                              :onover
                                              (lambda ()
                                                (if isstop (notifyover subscriber))
-                                               (unsubscribe context))))))))
+                                               (notifyover (subscriber context)))))))))
                  :onfail (lambda (reason)
                            (unless isstop
                              (setf isstop t)
