@@ -986,7 +986,8 @@
    self
    (lambda (subscriber)
      (let ((prev)
-           (isstop))
+           (isstop)
+           (caslock (caslock)))
        (observer :onnext
                  (lambda (value)
                    (unless isstop
@@ -1005,11 +1006,13 @@
                                                (fail subscriber reason))
                                              :onover
                                              (lambda ()
-                                               (if isstop (over subscriber))
-                                               (notifyover (subscriber context)))))))))
+                                               (with-caslock caslock
+                                                 (if isstop (notifyover subscriber))
+                                                 (notifyover (subscriber context))))))))))
                  :onfail (lambda (reason)
                            (notifyfail subscriber reason))
                  :onover (lambda ()
-                           (setf isstop t)
-                           (if (isstop prev)
-                               (notifyover subscriber))))))))
+                           (with-caslock caslock
+                             (setf isstop t)
+                             (if (isstop prev)
+                                 (notifyover subscriber)))))))))
