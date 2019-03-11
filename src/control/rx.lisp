@@ -268,14 +268,6 @@
             :accessor onafter
             :type (or null function))))
 
-(defclass context ()
-  ((subscriber :initform nil
-               :accessor subscriber
-               :type (or null inner-subscriber))))
-
-(defmethod context ()
-  (make-instance 'context))
-
 (defmethod make-subscriber ((self subscriber))
   (setf (onnext self)
         (lambda (value)
@@ -321,10 +313,8 @@
   subscriber)
 
 (defmethod within-inner-subscriber ((self observable) (parent subscriber) (pass function))
-  (let* ((context (context))
-         (observer (funcall pass context))
-         (subscriber (inner-subscriber parent)))
-    (setf (subscriber context) subscriber)
+  (let* ((subscriber (inner-subscriber parent))
+         (observer (funcall pass subscriber)))
     (subscribe-inner self (connect subscriber observer))
     subscriber))
 
@@ -355,9 +345,6 @@
   (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))
   (unregister (parent self) self)
   (unsubscribe (source self)))
-
-(defmethod unsubscribe ((self context))
-  (unsubscribe (subscriber self)))
 
 (defmethod notifynext ((self outer-subscriber) value)
   (unless (or (isclose self) (isstop self))
@@ -399,29 +386,17 @@
       (unsubscribe self)))
    nil)
 
-(defmethod on-notifynext ((self outer-subscriber))
+(defmethod on-notifynext ((self subscriber))
   (lambda (value)
     (notifynext self value)))
 
-(defmethod on-notifyfail ((self outer-subscriber))
+(defmethod on-notifyfail ((self subscriber))
   (lambda (reason)
     (notifyfail self reason)))
 
-(defmethod on-notifyover ((self outer-subscriber))
+(defmethod on-notifyover ((self subscriber))
   (lambda ()
     (notifyover self)))
-
-(defmethod on-notifynext ((self context))
-  (lambda (value)
-    (notifynext (subscriber self) value)))
-
-(defmethod on-notifyfail ((self context))
-  (lambda (reason)
-    (notifyfail (subscriber self) reason)))
-
-(defmethod on-notifyover ((self context))
-  (lambda ()
-    (notifyover (subscriber self))))
 
 (defmethod operator ((self observable) (pass function))
   (observable (lambda (observer)
@@ -587,8 +562,8 @@
                 (within-inner-subscriber
                  sampler
                  subscriber
-                 (lambda (context)
-                   (declare (ignorable context))
+                 (lambda (inner)
+                   (declare (ignorable inner))
                    (observer :onnext (lambda (x)
                                        (declare (ignorable x))
                                        (if hasvalue
@@ -651,18 +626,18 @@
                  (within-inner-subscriber
                   notifier
                   subscriber
-                  (lambda (context)
+                  (lambda (inner)
                     (observer :onnext
                               (lambda (value)
                                 (declare (ignorable value))
                                 (unless notify
                                   (setf notify t)
-                                  (unsubscribe context)))
+                                  (unsubscribe inner)))
                               :onfail
                               (lambda (reason)
                                 (fail subscriber reason))
                               :onover
-                              (on-notifyover context))))))
+                              (on-notifyover inner))))))
        (observer :onnext
                  (lambda (value)
                    (if notify
@@ -732,14 +707,14 @@
                      (within-inner-subscriber
                       (funcall observablefn value)
                       subscriber
-                      (lambda (context)
+                      (lambda (inner)
                         (observer :onnext
                                   (lambda (x)
                                     (declare (ignorable x))
                                     (setf disable nil)
-                                    (unsubscribe context))
-                                  :onfail (on-notifyfail context)
-                                  :onover (on-notifyover context))))))
+                                    (unsubscribe inner))
+                                  :onfail (on-notifyfail inner)
+                                  :onover (on-notifyover inner))))))
                  :onfail (on-notifyfail subscriber)
                  :onover (on-notifyover subscriber))))))
 
@@ -784,7 +759,7 @@
                        (within-inner-subscriber
                         (funcall observablefn value)
                         subscriber
-                        (lambda (context)
+                        (lambda (inner)
                           (observer :onnext
                                     (lambda (value)
                                       (notifynext subscriber value))
@@ -796,7 +771,7 @@
                                       (with-caslock caslock
                                         (if (and isstop (queue-empty-p buffers))
                                             (notifyover subscriber))
-                                        (notifyover (subscriber context)))
+                                        (notifyover inner))
                                       (unless (queue-empty-p buffers)
                                         (process-buffer subscriber (de buffers)))))))))
                  :onfail (on-notifyfail subscriber)
@@ -839,8 +814,7 @@
                      (setf prev (within-inner-subscriber
                                  (funcall observablefn value)
                                  subscriber
-                                 (lambda (context)
-                                   (declare (ignorable context))
+                                 (lambda (inner)
                                    (observer :onnext
                                              (lambda (value)
                                                (notifynext subscriber value))
@@ -851,7 +825,7 @@
                                              (lambda ()
                                                (with-caslock caslock
                                                  (if isstop (notifyover subscriber))
-                                                 (notifyover (subscriber context))))))))))
+                                                 (notifyover inner)))))))))
                  :onfail (lambda (reason)
                            (notifyfail subscriber reason))
                  :onover (lambda ()
