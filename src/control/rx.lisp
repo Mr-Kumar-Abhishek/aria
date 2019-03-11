@@ -185,7 +185,7 @@
     (connect subscriber (observer :onnext (on-notifynext subscriber)
                                   :onfail (on-notifyfail subscriber)
                                   :onover (on-notifyover subscriber)))
-    (subscribe-outer self subscriber)
+    (subscribe-subscriber self subscriber)
     (source subscriber)))
 
 (defclass subscriber (observer)
@@ -295,27 +295,27 @@
 (defmethod inner-subscriber ((parent subscriber))
   (make-subscriber (make-instance 'inner-subscriber :parent parent)))
 
-(defmethod subscribe-outer ((self observable) (subscriber outer-subscriber))
+(defmethod subscribe-subscriber :around ((self observable) (subscriber subscriber))
+  (call-next-method)
+  (if (isstop subscriber)
+      (unsubscribe subscriber))
+  subscriber)
+
+(defmethod subscribe-subscriber ((self observable) (subscriber outer-subscriber))
   (let ((onbefore (onbefore subscriber))
         (onafter (onafter subscriber)))
     (if onbefore (funcall onbefore))
     (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
-    (if onafter (funcall onafter)))
-  (if (isstop subscriber)
-      (unsubscribe subscriber))
-  subscriber)
+    (if onafter (funcall onafter))))
 
-(defmethod subscribe-inner ((self observable) (subscriber inner-subscriber))
+(defmethod subscribe-subscriber ((self observable) (subscriber inner-subscriber))
   (register (parent subscriber) subscriber)
-  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
-  (if (isstop subscriber)
-      (unsubscribe subscriber))
-  subscriber)
+  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber))))
 
 (defmethod within-inner-subscriber ((self observable) (parent subscriber) (pass function))
   (let* ((subscriber (inner-subscriber parent))
          (observer (funcall pass subscriber)))
-    (subscribe-inner self (connect subscriber observer))
+    (subscribe-subscriber self (connect subscriber observer))
     subscriber))
 
 (defmethod register ((self subscriber) (inner subscriber))
@@ -333,18 +333,19 @@
 
 (defmethod unregister ((self subscriber) (subscription null)))
 
-(defmethod unsubscribe ((self subscriber))
+(defmethod unsubscribe :around ((self subscriber))
   (with-caslock (spinlock self)
     (setf (isstop self) t))
   (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))
+  (call-next-method)
+  self)
+
+(defmethod unsubscribe ((self subscriber))
   (unsubscribe (source self)))
 
 (defmethod unsubscribe ((self inner-subscriber))
-  (with-caslock (spinlock self)
-    (setf (isstop self) t))
-  (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))
   (unregister (parent self) self)
-  (unsubscribe (source self)))
+  (call-next-method))
 
 (defmethod notifynext :around ((self subscriber) value)
   (unless (or (isclose self) (isstop self))
@@ -401,7 +402,7 @@
   (observable (lambda (observer)
                 (let ((subscriber (outer-subscriber observer)))
                   (connect subscriber (funcall pass subscriber))
-                  (subscribe-outer self subscriber)
+                  (subscribe-subscriber self subscriber)
                   (lambda ()
                     (unsubscribe subscriber))))))
 
