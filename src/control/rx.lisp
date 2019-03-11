@@ -301,16 +301,19 @@
       (unsubscribe subscriber))
   subscriber)
 
+(defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
+  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber))))
+
 (defmethod subscribe-subscriber ((self observable) (subscriber outer-subscriber))
   (let ((onbefore (onbefore subscriber))
         (onafter (onafter subscriber)))
     (if onbefore (funcall onbefore))
-    (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
+    (call-next-method)
     (if onafter (funcall onafter))))
 
 (defmethod subscribe-subscriber ((self observable) (subscriber inner-subscriber))
   (register (parent subscriber) subscriber)
-  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber))))
+  (call-next-method))
 
 (defmethod within-inner-subscriber ((self observable) (parent subscriber) (pass function))
   (let* ((subscriber (inner-subscriber parent))
