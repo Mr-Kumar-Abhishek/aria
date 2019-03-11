@@ -17,10 +17,10 @@
   (:export :observable
            :observablep
            :subscribe)
-  (:export :subscriber
-           :subscriberp
-           :isstop
-           :unsubscribe)
+  (:export :subscription
+           :subscriptionp
+           :unsubscribe
+           :isunsubscribed)
   (:export :observer
            :observerp
            :onnext
@@ -104,6 +104,14 @@
   (declare (ignorable self))
   nil)
 
+(defmethod subscriptionp ((self subscription))
+  (declare (ignorable self))
+  t)
+
+(defmethod subscriptionp (self)
+  (declare (ignorable self))
+  nil)
+
 (defmethod observerp ((self observer))
   (declare (ignorable self))
   t)
@@ -173,7 +181,12 @@
   self)
 
 (defmethod subscribe ((self observable) (observer observer))
-  (subscription-pass (funcall (revolver self) observer)))
+  (let ((subscriber (outer-subscriber observer)))
+    (combine subscriber (observer :onnext (on-notifynext subscriber)
+                                  :onfail (on-notifyfail subscriber)
+                                  :onover (on-notifyover subscriber)))
+    (subscribe-outer self subscriber)
+    (source subscriber)))
 
 (defclass subscriber (observer)
   (;; isstop, flag for subscription
@@ -212,14 +225,6 @@
    (buffers :initform (make-queue)
             :accessor buffers
             :type queue)))
-
-(defmethod subscriberp ((self subscriber))
-  (declare (ignorable self))
-  t)
-
-(defmethod subscriberp (self)
-  (declare (ignorable self))
-  nil)
 
 (defclass buffer ()
   ())
@@ -353,23 +358,15 @@
 (defmethod unsubscribe ((self subscriber))
   (with-caslock (spinlock self)
     (setf (isstop self) t))
-  (unsubscribe (source self))
-  (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self))))
+  (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))
+  (unsubscribe (source self)))
 
 (defmethod unsubscribe ((self inner-subscriber))
   (with-caslock (spinlock self)
     (setf (isstop self) t))
-  (let* ((parent (parent self))
-         (needunsub)) ;; unsubscribe the parent in a high priority
-    (if (isstop parent)
-        (if (and (source parent)
-                 (isunsubscribed (source parent)))
-            (setf needunsub t))
-        (setf needunsub t))
-    (if needunsub
-        (progn (unregister parent self)
-               (unsubscribe (source self))
-               (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))))))
+  (map nil (lambda (sub) (unsubscribe sub)) (reverse (inners self)))
+  (unregister (parent self) self)
+  (unsubscribe (source self)))
 
 (defmethod unsubscribe ((self context))
   (unsubscribe (subscriber self)))
@@ -861,10 +858,10 @@
                                  (lambda (context)
                                    (declare (ignorable context))
                                    (observer :onnext
-                                             (lambda (value) (print "run inner next")
+                                             (lambda (value)
                                                (notifynext subscriber value))
                                              :onfail
-                                             (lambda (reason) (print "run inner fail")
+                                             (lambda (reason)
                                                (fail subscriber reason))
                                              :onover
                                              (lambda ()

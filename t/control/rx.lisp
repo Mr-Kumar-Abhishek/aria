@@ -356,7 +356,7 @@
                                   (lambda () (push "unsub sampler" collector)))))))
     (subscribe o (observer :onover (lambda () (push "over" collector))))
     (funcall end)
-    (is (equal (reverse collector) (list "over" "unsub source" "unsub sampler")))))
+    (is (equal (reverse collector) (list "over" "unsub sampler" "unsub source")))))
 
 (test sample-automatically-unsubcribe-all-onfail
   (let* ((end)
@@ -369,7 +369,7 @@
                                   (lambda () (push "unsub sampler" collector)))))))
     (subscribe o (observer :onfail (lambda (reason) (push reason collector))))
     (funcall end)
-    (is (equal (reverse collector) (list "fail" "unsub source" "unsub sampler")))))
+    (is (equal (reverse collector) (list "fail" "unsub sampler" "unsub source")))))
 
 (test sample-manually-unsubcribe-all
   (let* ((end)
@@ -381,7 +381,7 @@
                                   (declare (ignorable observer))
                                   (lambda () (push "unsub sampler" collector)))))))
     (unsubscribe (subscribe o (observer :onover (lambda () (push "over" collector)))))
-    (is (equal (reverse collector) (list "unsub source" "unsub sampler")))))
+    (is (equal (reverse collector) (list "unsub sampler" "unsub source")))))
 
 (test single
   (let ((collector)
@@ -466,7 +466,7 @@
                                            (push "inner unsub" collector)))))
               (observer :onnext (lambda (value) (push value collector))
                         :onfail (lambda (reason) (push reason collector))))
-    (is (equal (reverse collector) (list "inner fail" "source unsub" "inner unsub")))))
+    (is (equal (reverse collector) (list "inner fail" "inner unsub" "source unsub")))))
 
 (test skipuntil-async
   (let* ((semaphore (make-semaphore))
@@ -518,7 +518,7 @@
                (observer :onnext (lambda (value) (push value collector))
                          :onfail (lambda (reason) (push reason collector) (signal-semaphore semaphore))))
     (join-thread th)
-    (is (equal (reverse collector) (list "fail" "source unsub" "inner unsub")))))
+    (is (equal (reverse collector) (list "fail" "inner unsub" "source unsub")))))
 
 (test skipwhile
   (let ((collector)
@@ -668,8 +668,8 @@
                          :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list 10
                                          "over"
-                                         "source unsub"
-                                         "inner unsub 10")))))
+                                         "inner unsub 10"
+                                         "source unsub")))))
 
 (test throttletime
   (let* ((semaphore (make-semaphore))
@@ -732,10 +732,10 @@
     (is (equal (reverse collector) (list 11 12 13
                                          21 22 23
                                          31 32 33
-                                         "source unsub"
                                          "inner unsub 10"
                                          "inner unsub 20"
-                                         "inner unsub 30")))))
+                                         "inner unsub 30"
+                                         "source unsub")))))
 
 (test flatmap-concurrent-0
   (let* ((collector)
@@ -805,10 +805,10 @@
     (is (equal (reverse collector) (list 11 12 13
                                          21 22 23
                                          "fail"
-                                         "source unsub"
                                          "inner unsub 10"
                                          "inner unsub 20"
-                                         "inner unsub 30")))))
+                                         "inner unsub 30"
+                                         "source unsub")))))
 
 (test flatmap-inner-fail-immediately
   (let* ((collector)
@@ -830,8 +830,8 @@
                          :onfail (lambda (reason) (push reason collector))))
     (is (equal (reverse collector) (list 11 12 13
                                          "fail"
-                                         "source unsub"
-                                         "inner unsub 10")))))
+                                         "inner unsub 10"
+                                         "source unsub")))))
 
 (test flatmap-over-inner-over
   (let* ((collector)
@@ -886,10 +886,10 @@
     (is (equal (reverse collector) (list 11 12 13
                                          21 22 23
                                          31 32 33
-                                         "source unsub"
                                          "inner unsub 10"
                                          "inner unsub 20"
-                                         "inner unsub 30")))))
+                                         "inner unsub 30"
+                                         "source unsub")))))
 
 (test flatmap-take-inner-fail
   (let* ((collector)
@@ -953,9 +953,8 @@
     (unsubscribe subscription)
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
-                                         31 32 33
-                                         "source unsub"
-                                         "inner unsub 30")))))
+                                         31 32 33 "inner unsub 30"
+                                         "source unsub")))))
 
 (test switchmap-over-inner-not-over
   (let* ((collector)
@@ -982,9 +981,8 @@
     (unsubscribe subscription)
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
-                                         31 32 33
-                                         "source unsub"
-                                         "inner unsub 30")))))
+                                         31 32 33 "inner unsub 30"
+                                         "source unsub")))))
 
 (test switchmap-over-inner-over
   (let* ((collector)
@@ -1033,10 +1031,10 @@
                                             :onfail (lambda (reason) (push reason collector))))))
     (is (equal (reverse collector) (list 11 12 13
                                          "fail"
-                                         "source unsub"
-                                         "inner unsub 10")))
+                                         "inner unsub 10"
+                                         "source unsub")))
     (unsubscribe subscription)
     (is (equal (reverse collector) (list 11 12 13
                                          "fail"
-                                         "source unsub"
-                                         "inner unsub 10")))))
+                                         "inner unsub 10"
+                                         "source unsub")))))
