@@ -253,15 +253,21 @@
 (defmethod overbuffer ()
   (make-instance 'overbuffer))
 
-(defclass outer-subscriber (subscriber)
-  ((destination :initarg :destination
-                :accessor destination
-                :type observer)))
-
 (defclass inner-subscriber (subscriber)
   ((parent :initarg :parent
            :accessor parent
            :type subscriber)))
+
+(defclass outer-subscriber (subscriber)
+  ((destination :initarg :destination
+                :accessor destination
+                :type observer)
+   (onbefore :initform nil
+             :accessor onbefore
+             :type (or null function))
+   (onafter :initform nil
+            :accessor onafter
+            :type (or null function))))
 
 (defclass context ()
   ((subscriber :initform nil
@@ -304,8 +310,12 @@
 (defmethod inner-subscriber ((parent subscriber))
   (make-subscriber (make-instance 'inner-subscriber :parent parent)))
 
-(defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
-  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
+(defmethod subscribe-outer ((self observable) (subscriber outer-subscriber))
+  (let ((onbefore (onbefore subscriber))
+        (onafter (onafter subscriber)))
+    (if onbefore (funcall onbefore))
+    (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber)))
+    (if onafter (funcall onafter)))
   (if (isstop subscriber)
       (unsubscribe subscriber))
   subscriber)
@@ -432,9 +442,19 @@
   (observable (lambda (observer)
                 (let ((subscriber (outer-subscriber observer)))
                   (combine subscriber (funcall pass subscriber))
-                  (subscribe-subscriber self subscriber)
+                  (subscribe-outer self subscriber)
                   (lambda ()
                     (unsubscribe subscriber))))))
+
+(defmethod before ((self outer-subscriber) (supplier function))
+  (if (onbefore self)
+      (error "onbefore has been setted")
+      (setf (onbefore self) supplier)))
+
+(defmethod after ((self outer-subscriber) (supplier function))
+  (if (onafter self)
+      (error "onafter has been setted")
+      (setf (onafter self) supplier)))
 
 (defmethod combine ((self subscriber) (observer observer))
   (setf (donext self) (onnext observer))
@@ -581,17 +601,19 @@
    (lambda (subscriber)
      (let ((last)
            (hasvalue))
-       (within-inner-subscriber
-        sampler
-        subscriber
-        (lambda (context)
-          (declare (ignorable context))
-          (observer :onnext (lambda (x)
-                              (declare (ignorable x))
-                              (if hasvalue
-                                  (notifynext subscriber last)))
-                    :onfail (on-notifyfail subscriber)
-                    :onover (on-notifyover subscriber))))
+       (after subscriber
+              (lambda ()
+                (within-inner-subscriber
+                 sampler
+                 subscriber
+                 (lambda (context)
+                   (declare (ignorable context))
+                   (observer :onnext (lambda (x)
+                                       (declare (ignorable x))
+                                       (if hasvalue
+                                           (notifynext subscriber last)))
+                             :onfail (on-notifyfail subscriber)
+                             :onover (on-notifyover subscriber))))))
        (observer :onnext
                  (lambda (value)
                    (setf last value)
@@ -643,21 +665,23 @@
   (operator self
    (lambda (subscriber)
      (let ((notify))
-       (within-inner-subscriber
-        notifier
-        subscriber
-        (lambda (context)
-          (observer :onnext
-                    (lambda (value)
-                      (declare (ignorable value))
-                      (unless notify
-                        (setf notify t)
-                        (unsubscribe context)))
-                    :onfail
-                    (lambda (reason)
-                      (fail subscriber reason))
-                    :onover
-                    (on-notifyover context))))
+       (before subscriber
+               (lambda ()
+                 (within-inner-subscriber
+                  notifier
+                  subscriber
+                  (lambda (context)
+                    (observer :onnext
+                              (lambda (value)
+                                (declare (ignorable value))
+                                (unless notify
+                                  (setf notify t)
+                                  (unsubscribe context)))
+                              :onfail
+                              (lambda (reason)
+                                (fail subscriber reason))
+                              :onover
+                              (on-notifyover context))))))
        (observer :onnext
                  (lambda (value)
                    (if notify
@@ -837,10 +861,10 @@
                                  (lambda (context)
                                    (declare (ignorable context))
                                    (observer :onnext
-                                             (lambda (value)
+                                             (lambda (value) (print "run inner next")
                                                (notifynext subscriber value))
                                              :onfail
-                                             (lambda (reason)
+                                             (lambda (reason) (print "run inner fail")
                                                (fail subscriber reason))
                                              :onover
                                              (lambda ()
