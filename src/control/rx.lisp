@@ -17,10 +17,10 @@
   (:export :observable
            :observablep
            :subscribe)
-  (:export :subscription
-           :subscriptionp
-           :unsubscribe
-           :isunsubscribed)
+  (:export :subscriber
+           :subscriberp
+           :isstop
+           :unsubscribe)
   (:export :observer
            :observerp
            :onnext
@@ -76,8 +76,9 @@
    (isunsubscribed :initform nil
                    :accessor isunsubscribed
                    :type boolean)
-   (lock :initform :free
-         :type keyword)))
+   (lock :initform (caslock)
+         :accessor lock
+         :type caslock)))
 
 (defclass observer ()
   ((onnext :initarg :onnext
@@ -100,14 +101,6 @@
   t)
 
 (defmethod observablep (self)
-  (declare (ignorable self))
-  nil)
-
-(defmethod subscriptionp ((self subscription))
-  (declare (ignorable self))
-  t)
-
-(defmethod subscriptionp (self)
   (declare (ignorable self))
   nil)
 
@@ -219,6 +212,14 @@
    (buffers :initform (make-queue)
             :accessor buffers
             :type queue)))
+
+(defmethod subscriberp ((self subscriber))
+  (declare (ignorable self))
+  t)
+
+(defmethod subscriberp (self)
+  (declare (ignorable self))
+  nil)
 
 (defclass buffer ()
   ())
@@ -459,11 +460,11 @@
   (subscribe self (observer :onnext onnext)))
 
 (defmethod unsubscribe ((self subscription))
-  (if (cas (slot-value self 'lock) :free :used)
-      (progn (setf (isunsubscribed self) t)
-             (let ((onunsubscribe (onunsubscribe self)))
-               (if onunsubscribe
-                   (funcall onunsubscribe))))))
+  (with-caslock-once (lock self)
+    (setf (isunsubscribed self) t)
+    (let ((onunsubscribe (onunsubscribe self)))
+      (if onunsubscribe
+          (funcall onunsubscribe)))))
 
 (defmethod unsubscribe (self))
 
