@@ -213,9 +213,9 @@
    (inners :initform nil
            :accessor inners
            :type list)
-   (connect :initform nil
-            :accessor onconnect
-            :type (or null observer))))
+   (connector :initform nil
+              :accessor connector
+              :type (or null observer))))
 
 (defclass buffer ()
   ())
@@ -267,19 +267,52 @@
 
 (defmethod next ((self subscriber) value)
   (unless (isstop self)
-    (handler-case (safe-funcall (onnext (onconnect self)) value)
+    (handler-case (next-in (connector self) value)
       (error (reason) (fail self reason))))
   nil)
 
+(defmethod next-in ((self observer) value)
+  (safe-funcall (onnext self) value))
+
+(defmethod next-in ((self null) value)
+  (declare (ignorable self value))
+  (error "subscriber is not connect"))
+
 (defmethod fail ((self subscriber) reason)
   (unless (isstop self)
-    (safe-funcall (onfail (onconnect self)) reason))
-  nil)
+    (fail-in (connector self) reason)
+  nil))
+
+(defmethod fail-in ((self observer) reason)
+  (safe-funcall (onfail self) reason))
+
+(defmethod fail-in ((self null) reason)
+  (declare (ignorable self reason))
+  (error "subscriber is not connect"))
 
 (defmethod over ((self subscriber))
   (unless (isstop self)
-    (safe-funcall (onover (onconnect self))))
+    (over-in (connector self)))
   nil)
+
+(defmethod over-in ((self observer))
+  (safe-funcall (onover self)))
+
+(defmethod over-in ((self null))
+  (declare (ignorable self reason))
+  (error "subscriber is not connect"))
+
+(defmethod onnext ((self subscriber))
+  (lambda (value)
+    (next self value)))
+
+(defmethod onfail ((self subscriber))
+  (lambda (reason)
+    (fail self reason)))
+
+(defmethod onover ((self subscriber))
+  (lambda ()
+    (over self)))
 
 (defmethod outer-subscriber ((self observer))
   (make-instance 'outer-subscriber :destination self))
@@ -409,7 +442,7 @@
   (setf (onafter self) supplier))
 
 (defmethod connect ((self subscriber) (observer observer))
-  (setf (onconnect self) observer)
+  (setf (connector self) observer)
   self)
 
 (defmethod subscribe ((self observable) (onnext function))
@@ -472,38 +505,44 @@
                           :onfail (on-notifyfail subscriber)
                           :onover (on-notifyover subscriber))))))
 
-(defmethod debounce ((self observable) (timer function) (clear function))
-  "timer needs receive a onnext consumer and return a timer cancel handler
-   clear needs receive a timer cancel handler"
+(defmethod debounce ((self observable) (observablefn function))
+  "observablefn needs receive a value and return a observable"
   (operator self
             (lambda (subscriber)
-              (let ((cancel))
+              (let ((prev))
                 (observer :onnext
                           (lambda (value)
-                            (let ((cancel-handler cancel))
-                              (if (not cancel-handler)
-                                  (setf cancel (funcall timer (lambda ()
-                                                                (setf cancel nil)
-                                                                (notifynext subscriber value))))
-                                  (progn (funcall clear cancel-handler)
-                                         (setf cancel (funcall timer (lambda ()
-                                                                       (setf cancel nil)
-                                                                       (notifynext subscriber value))))))))
+                            (unsubscribe prev)
+                            (setf prev
+                                  (within-inner-subscriber
+                                   (funcall observablefn value)
+                                   subscriber
+                                   (lambda (inner)
+                                     (observer :onnext
+                                               (lambda (x)
+                                                 (declare (ignorable x))
+                                                 (notifynext subscriber value)
+                                                 (unsubscribe inner))
+                                               :onfail (onfail subscriber)
+                                               :onfail (on-notifyover inner))))))
                           :onfail (on-notifyfail subscriber)
                           :onover (on-notifyover subscriber))))))
 
 (defmethod each ((self observable) (consumer function))
   (operator self
             (lambda (subscriber)
-              (observer :onnext (lambda (value) (funcall consumer value) (notifynext subscriber value))
+              (observer :onnext (lambda (value)
+                                  (funcall consumer value)
+                                  (notifynext subscriber value))
                         :onfail (on-notifyfail subscriber)
                         :onover (on-notifyover subscriber)))))
 
 (defmethod filter ((self observable) (predicate function))
   (operator self
             (lambda (subscriber)
-              (observer :onnext (lambda (value) (if (funcall predicate value)
-                                                    (notifynext subscriber value)))
+              (observer :onnext (lambda (value)
+                                  (if (funcall predicate value)
+                                      (notifynext subscriber value)))
                         :onfail (on-notifyfail subscriber)
                         :onover (on-notifyover subscriber)))))
 
@@ -618,11 +657,8 @@
                                 (unless notify
                                   (setf notify t)
                                   (unsubscribe inner)))
-                              :onfail
-                              (lambda (reason)
-                                (fail subscriber reason))
-                              :onover
-                              (on-notifyover inner))))))
+                              :onfail (onfail subscriber)
+                              :onover (on-notifyover inner))))))
        (observer :onnext
                  (lambda (value)
                    (if notify
@@ -698,7 +734,7 @@
                                     (declare (ignorable x))
                                     (setf disable nil)
                                     (unsubscribe inner))
-                                  :onfail (on-notifyfail inner)
+                                  :onfail (onfail subscriber)
                                   :onover (on-notifyover inner))))))
                  :onfail (on-notifyfail subscriber)
                  :onover (on-notifyover subscriber))))))
@@ -748,9 +784,7 @@
                           (observer :onnext
                                     (lambda (value)
                                       (notifynext subscriber value))
-                                    :onfail
-                                    (lambda (reason)
-                                      (fail subscriber reason))
+                                    :onfail (onfail subscriber)
                                     :onover
                                     (lambda ()
                                       (with-caslock caslock
@@ -803,9 +837,7 @@
                                    (observer :onnext
                                              (lambda (value)
                                                (notifynext subscriber value))
-                                             :onfail
-                                             (lambda (reason)
-                                               (fail subscriber reason))
+                                             :onfail (onfail subscriber)
                                              :onover
                                              (lambda ()
                                                (with-caslock caslock

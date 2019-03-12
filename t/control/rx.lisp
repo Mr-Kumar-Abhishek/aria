@@ -13,7 +13,7 @@
   (:import-from :aria.asynchronous.timer
                 :gen-timer
                 :settimeout
-                :cleartimeout)
+                :end)
   (:import-from :aria.control.rx
                 :observable
                 :observer
@@ -229,9 +229,13 @@
                               (dotimes (x 20) (sleep 0.001) (next observer x)))))))
          (collector)
          (timer (gen-timer)))
-    (subscribe (debounce o (lambda (x) (settimeout timer x 20)) #'cleartimeout)
+    (subscribe (debounce o (lambda (value)
+                             (declare (ignorable value))
+                             (observable (lambda (observer)
+                                           (settimeout timer (lambda () (next observer nil)) 20)))))
                (lambda (value) (push value collector) (signal-semaphore semaphore)))
     (join-thread th)
+    (end timer)
     (is (equal (reverse collector) (list 9 19)))))
 
 (test distinct
