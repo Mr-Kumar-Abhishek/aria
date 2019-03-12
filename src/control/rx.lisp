@@ -213,15 +213,9 @@
    (inners :initform nil
            :accessor inners
            :type list)
-   (donext :initform #'empty-function
-           :accessor donext
-           :type function)
-   (dofail :initform #'empty-function
-           :accessor dofail
-           :type function)
-   (doover :initform #'empty-function
-           :accessor doover
-           :type function)))
+   (connect :initform nil
+            :accessor onconnect
+            :type (or null observer))))
 
 (defclass buffer ()
   ())
@@ -273,16 +267,16 @@
 
 (defmethod next ((self subscriber) value)
  (unless (isstop self)
-    (handler-case (safe-funcall (donext self) value)
+   (handler-case (safe-funcall (onnext (onconnect self)) value)
       (error (reason) (fail self reason)))))
 
 (defmethod fail ((self subscriber) reason)
   (unless (isstop self)
-    (safe-funcall (dofail self) reason)))
+    (safe-funcall (onfail (onconnect self)) reason)))
 
 (defmethod over ((self subscriber))
   (unless (isstop self)
-    (safe-funcall (doover self))))
+    (safe-funcall (onover (onconnect self)))))
 
 (defmethod outer-subscriber ((self observer))
   (make-instance 'outer-subscriber :destination self))
@@ -412,13 +406,8 @@
   (setf (onafter self) supplier))
 
 (defmethod connect ((self subscriber) (observer observer))
-  (setf (donext self) (onnext observer))
-  (setf (dofail self) (onfail observer))
-  (setf (doover self) (onover observer))
+  (setf (onconnect self) observer)
   self)
-
-(defmethod connect ((self subscriber) (subscriber subscriber))
-  (error "not support"))
 
 (defmethod subscribe ((self observable) (onnext function))
   (subscribe self (observer :onnext onnext)))
