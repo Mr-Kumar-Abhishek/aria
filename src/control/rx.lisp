@@ -266,17 +266,20 @@
             :type function)))
 
 (defmethod next ((self subscriber) value)
- (unless (isstop self)
-   (handler-case (safe-funcall (onnext (onconnect self)) value)
-      (error (reason) (fail self reason)))))
+  (unless (isstop self)
+    (handler-case (safe-funcall (onnext (onconnect self)) value)
+      (error (reason) (fail self reason))))
+  nil)
 
 (defmethod fail ((self subscriber) reason)
   (unless (isstop self)
-    (safe-funcall (onfail (onconnect self)) reason)))
+    (safe-funcall (onfail (onconnect self)) reason))
+  nil)
 
 (defmethod over ((self subscriber))
   (unless (isstop self)
-    (safe-funcall (onover (onconnect self)))))
+    (safe-funcall (onover (onconnect self))))
+  nil)
 
 (defmethod outer-subscriber ((self observer))
   (make-instance 'outer-subscriber :destination self))
@@ -659,7 +662,7 @@
                                             (notifyfail subscriber "tail value not exist")))
                                     (notifyover subscriber)))))))
 
-(defmethod take ((self observable) (count number))
+(defmethod take ((self observable) (count integer))
   (operator self
    (lambda (subscriber)
      (let ((takes 0)
@@ -700,7 +703,7 @@
                  :onfail (on-notifyfail subscriber)
                  :onover (on-notifyover subscriber))))))
 
-(defmethod throttletime ((self observable) (milliseconds number))
+(defmethod throttletime ((self observable) (milliseconds integer))
   (operator self
             (lambda (subscriber)
               (let ((last))
