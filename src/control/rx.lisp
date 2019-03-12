@@ -64,6 +64,8 @@
 
 (in-package :aria.control.rx)
 
+(declaim (optimize (speed 0) (safety 3) (debug 3) (compilation-speed 0)))
+
 (defclass observable ()
   ((revolver :initarg :revolver
              :accessor revolver
@@ -72,7 +74,7 @@
 (defclass subscription ()
   ((onunsubscribe :initarg :onunsubscribe
                   :accessor onunsubscribe
-                  :type (or null function))
+                  :type function)
    (isunsubscribed :initform nil
                    :accessor isunsubscribed
                    :type boolean)
@@ -95,6 +97,13 @@
   ((observers :initform nil
               :accessor observers
               :type list)))
+
+(defmethod empty-function (&rest rest)
+  (declare (ignorable rest)))
+
+(defmethod safe-funcall ((function function) &rest rest)
+  (unless (eq function #'empty-function)
+    (apply function rest)))
 
 (defmethod observablep ((self observable))
   (declare (ignorable self))
@@ -149,14 +158,8 @@
 (defmethod observable ((revolver function))
   (make-instance 'observable :revolver revolver))
 
-(defmethod observer (&key onnext onfail onover)
+(defmethod observer (&key (onnext #'empty-function) (onfail #'empty-function) (onover #'empty-function))
   (make-instance 'observer :onnext onnext :onfail onfail :onover onover))
-
-(defmethod safe-observer ((self observer))
-  (make-instance 'observer
-                 :onnext (or (onnext self) #'id)
-                 :onfail (or (onfail self) #'id)
-                 :onover (or (onover self) #'id)))
 
 (defmethod broadcast ((self subject) (method function))
   (lambda (&rest args)
@@ -171,7 +174,7 @@
 
 (defmethod subscription-pass (self)
   (declare (ignorable self))
-  (make-instance 'subscription :onunsubscribe nil))
+  (make-instance 'subscription :onunsubscribe #'empty-function))
 
 (defmethod subscription-pass ((self function))
   (let ((unsubscribed))
@@ -188,7 +191,7 @@
     (subscribe-subscriber self subscriber)
     (source subscriber)))
 
-(defclass subscriber (observer)
+(defclass subscriber ()
   (;; isstop, flag for subscription
    (isstop :initform nil
            :accessor isstop
@@ -210,15 +213,15 @@
    (inners :initform nil
            :accessor inners
            :type list)
-   (donext :initform nil
+   (donext :initform #'empty-function
            :accessor donext
-           :type (or null function))
-   (dofail :initform nil
+           :type function)
+   (dofail :initform #'empty-function
            :accessor dofail
-           :type (or null function))
-   (doover :initform nil
+           :type function)
+   (doover :initform #'empty-function
            :accessor doover
-           :type (or null function))))
+           :type function)))
 
 (defclass buffer ()
   ())
@@ -260,40 +263,35 @@
 (defclass outer-subscriber (subscriber)
   ((destination :initarg :destination
                 :accessor destination
-                :type observer)
-   (onbefore :initform nil
+                :type (or subscriber observer))
+   (onbefore :initform #'empty-function
              :accessor onbefore
-             :type (or null function))
-   (onafter :initform nil
+             :type function)
+   (onafter :initform #'empty-function
             :accessor onafter
-            :type (or null function))))
+            :type function)))
 
-(defmethod make-subscriber ((self subscriber))
-  (setf (onnext self)
-        (lambda (value)
-          (unless (isstop self)
-            (handler-case (let ((donext (donext self)))
-                            (if (functionp donext) (funcall donext value)))
-              (error (reason) (fail self reason))))))
-  (setf (onfail self)
-        (lambda (reason)
-          (unless (isstop self)
-            (let ((dofail (dofail self)))
-              (if (functionp dofail)
-                  (funcall dofail reason))))))
-  (setf (onover self)
-        (lambda ()
-          (unless (isstop self)
-            (let ((doover (doover self)))
-              (if (functionp doover)
-                  (funcall doover))))))
-  self)
+(defmethod next ((self subscriber) value)
+ (unless (isstop self)
+    (handler-case (safe-funcall (donext self) value)
+      (error (reason) (fail self reason)))))
+
+(defmethod fail ((self subscriber) reason)
+  (unless (isstop self)
+    (safe-funcall (dofail self) reason)))
+
+(defmethod over ((self subscriber))
+  (unless (isstop self)
+    (safe-funcall (doover self))))
 
 (defmethod outer-subscriber ((self observer))
-  (make-subscriber (make-instance 'outer-subscriber :destination (safe-observer self))))
+  (make-instance 'outer-subscriber :destination self))
+
+(defmethod outer-subscriber ((self subscriber))
+  (make-instance 'outer-subscriber :destination self))
 
 (defmethod inner-subscriber ((parent subscriber))
-  (make-subscriber (make-instance 'inner-subscriber :parent parent)))
+  (make-instance 'inner-subscriber :parent parent))
 
 (defmethod subscribe-subscriber :around ((self observable) (subscriber subscriber))
   (call-next-method)
@@ -305,11 +303,9 @@
   (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber))))
 
 (defmethod subscribe-subscriber ((self observable) (subscriber outer-subscriber))
-  (let ((onbefore (onbefore subscriber))
-        (onafter (onafter subscriber)))
-    (if onbefore (funcall onbefore))
-    (call-next-method)
-    (if onafter (funcall onafter))))
+  (safe-funcall (onbefore subscriber))
+  (call-next-method)
+  (safe-funcall (onafter subscriber)))
 
 (defmethod subscribe-subscriber ((self observable) (subscriber inner-subscriber))
   (register (parent subscriber) subscriber)
@@ -410,14 +406,10 @@
                     (unsubscribe subscriber))))))
 
 (defmethod before ((self outer-subscriber) (supplier function))
-  (if (onbefore self)
-      (error "onbefore has been setted")
-      (setf (onbefore self) supplier)))
+  (setf (onbefore self) supplier))
 
 (defmethod after ((self outer-subscriber) (supplier function))
-  (if (onafter self)
-      (error "onafter has been setted")
-      (setf (onafter self) supplier)))
+  (setf (onafter self) supplier))
 
 (defmethod connect ((self subscriber) (observer observer))
   (setf (donext self) (onnext observer))
@@ -441,9 +433,7 @@
 (defmethod unsubscribe ((self subscription))
   (with-caslock-once (lock self)
     (setf (isunsubscribed self) t)
-    (let ((onunsubscribe (onunsubscribe self)))
-      (if onunsubscribe
-          (funcall onunsubscribe)))))
+    (safe-funcall (onunsubscribe self))))
 
 (defmethod unsubscribe (self))
 
@@ -459,7 +449,7 @@
                 (map nil (lambda (x) (next observer x)) seq)
                 (over observer))))
 
-(defmethod range ((start number) (count number))
+(defmethod range ((start integer) (count integer))
   (observable (lambda (observer)
                 (loop for x from start to (+ start count -1) do (next observer x))
                 (over observer))))
@@ -737,11 +727,11 @@
                           :onfail (on-notifyfail subscriber)
                           :onover (on-notifyover subscriber))))))
 
-(defmethod isrestrict ((self subscriber) (concurrent number))
+(defmethod isrestrict ((self subscriber) (concurrent integer))
   (let ((restrict))
     (unless (< concurrent 0)
       (with-caslock (spinlock self)
-        (unless (< (length (inners self)) concurrent)
+        (unless (< (list-length (inners self)) concurrent)
           (setf restrict t))))
     restrict))
 
@@ -783,7 +773,7 @@
                              (setf isstop t)
                              (let ((ishold))
                                (with-caslock (spinlock subscriber)
-                                 (unless (eq (length (inners subscriber)) 0)
+                                 (unless (eq (list-length (inners subscriber)) 0)
                                    (setf ishold t)))
                                (unless ishold
                                  (notifyover subscriber))))))))))
