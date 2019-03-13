@@ -32,8 +32,14 @@
   (:export :subject
            :subjectp
            :subscribe)
+  ;; tools
+  (:export :pipe
+           :with-pipe
+           :operation
+           :combine)
   ;; help customize operators
-  (:export :operator)
+  (:export :operator
+           :within-inner-subscriber)
   ;; creation operators
   (:export :of
            :from
@@ -299,7 +305,7 @@
   (safe-funcall (onover self)))
 
 (defmethod over-in ((self null))
-  (declare (ignorable self reason))
+  (declare (ignorable self))
   (error "subscriber is not connect"))
 
 (defmethod onnext ((self subscriber))
@@ -461,6 +467,38 @@
     (safe-funcall (onunsubscribe self))))
 
 (defmethod unsubscribe (self))
+
+(defmacro operation (operator rest)
+  (let ((observable (gensym "observable")))
+    `(lambda (,observable)
+       (,operator ,observable ,@rest))))
+
+(defmethod combine ((self function) (operation function))
+  (lambda (observable)
+    (funcall operation (funcall self observable))))
+
+(defmethod combine ((self null) (operation function))
+  (declare (ignorable self))
+  operation)
+
+(defmacro pipe (&rest rest)
+  (let ((x (car `,rest))
+        (y (cdr `,rest)))
+    `(pipe-reduce nil ,x ,y)))
+
+(defmacro pipe-reduce (acc cur rest)
+  (let* ((operator (car `,cur))
+         (arglist (cdr `,cur))
+         (end (eq `,rest nil))
+         (nextacc `(combine ,acc (operation ,operator ,arglist)))
+         (nextcur (car `,rest))
+         (nextrest (cdr `,rest)))
+    (if end
+       nextacc
+       `(pipe-reduce ,nextacc ,nextcur ,nextrest))))
+
+(defmacro with-pipe (observable &rest rest)
+  `(funcall (pipe ,@rest) ,observable))
 
 ;; operators
 ;; creation operators

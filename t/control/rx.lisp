@@ -27,7 +27,9 @@
                 :over
                 :subscribe
                 :unsubscribe
-                :isunsubscribed)
+                :isunsubscribed
+                :pipe
+                :with-pipe)
   ;; creation operators
   (:import-from :aria.control.rx
                 :of
@@ -174,6 +176,41 @@
     (subscribe o (observer :onnext (lambda (value) (push value collector))
                            :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list 0 1 "over")))))
+
+;; tools
+(test pipe
+  (let ((collector)
+        (operation (pipe
+                    (mapper (lambda (x) (+ x 1)))
+                    (flatmap (lambda (val)
+                               (funcall (pipe
+                                         (mapper (lambda (x) (+ x (* 10 val)))))
+                                        (of 1 2 3 4))))
+                    (filter (lambda (x) (eq (mod x 2) 0)))))
+        (o (of 0 1 2 3)))
+    (subscribe (funcall operation o) (observer :onnext (lambda (value) (push value collector))
+                                               :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 12 14
+                                         22 24
+                                         32 34
+                                         42 44
+                                         "over")))))
+
+(test with-pipe
+  (let ((collector)
+        (o (with-pipe (of 0 1 2 3)
+             (mapper (lambda (x) (+ x 1)))
+             (flatmap (lambda (val)
+                        (with-pipe (of 1 2 3 4)
+                          (mapper (lambda (x) (+ x (* 10 val)))))))
+             (filter (lambda (x) (eq (mod x 2) 0))))))
+    (subscribe o (observer :onnext (lambda (value) (push value collector))
+                           :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 12 14
+                                         22 24
+                                         32 34
+                                         42 44
+                                         "over")))))
 
 ;; creation operators
 
