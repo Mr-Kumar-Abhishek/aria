@@ -18,7 +18,7 @@
                 :observable
                 :observer
                 :subject
-                :subscriptionp
+                :subscriberp
                 :onnext
                 :onfail
                 :onover
@@ -93,13 +93,13 @@
     (join-thread th)
     (is (equal (reverse collector) (list 0 1 2 3 4 5 6 7 8 9)))))
 
-(test subscriptionp
+(test subscriberp
   (let ((o (observable
              (lambda (observer)
                (declare (ignorable observer))))))
-    (is (subscriptionp (subscribe o (observer :onnext (lambda (value) value)))))))
+    (is (subscriberp (subscribe o (observer :onnext (lambda (value) value)))))))
 
-(test subscription-manually-unsubscribe
+(test subscriber-manually-unsubscribe
   (let* ((event)
          (collector)
          (o (observable
@@ -113,7 +113,7 @@
     (funcall event)
     (is (equal (reverse collector) (list "unsub")))))
 
-(test subscription-automatically-unsubscribe-onover
+(test subscriber-automatically-unsubscribe-onover
   (let* ((collector)
          (o (observable
              (lambda (observer)
@@ -122,7 +122,7 @@
     (subscribe o (observer :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list "over" "unsub")))))
 
-(test subscription-automatically-unsubscribe-onfail
+(test subscriber-automatically-unsubscribe-onfail
   (let* ((collector)
          (o (observable
              (lambda (observer)
@@ -221,41 +221,41 @@
 (test of
   (let* ((o (of 1 2 3 "hi" "go"))
          (collector)
-         (subscription (subscribe o (observer :onnext (lambda (value) (push value collector))
+         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
                                               :onover (lambda () (push "end" collector))))))
     (is (equal (reverse collector) (list 1 2 3 "hi" "go" "end")))
-    (is (isunsubscribed subscription))))
+    (is (isunsubscribed subscriber))))
 
 (test from
   (let* ((o (from "hello world"))
          (collector)
-         (subscription (subscribe o (observer :onnext (lambda (value) (push value collector))
+         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
                                               :onover (lambda () (push "end" collector))))))
     (is (equal (reverse collector) (list #\h #\e #\l #\l #\o #\  #\w #\o #\r #\l #\d "end")))
-    (is (isunsubscribed subscription))))
+    (is (isunsubscribed subscriber))))
 
 (test range
   (let* ((o (range 0 10))
          (collector)
-         (subscription (subscribe o (observer :onnext (lambda (value) (push value collector))
+         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
                                               :onover (lambda () (push "end" collector))))))
     (is (equal (reverse collector) (list 0 1 2 3 4 5 6 7 8 9 "end")))
-    (is (isunsubscribed subscription))))
+    (is (isunsubscribed subscriber))))
 
 (test empty
   (let* ((o (empty))
          (collector)
-         (subscription (subscribe o (observer :onover (lambda () (push "end" collector))))))
+         (subscriber (subscribe o (observer :onover (lambda () (push "end" collector))))))
     (is (equal (reverse collector) (list "end")))
-    (is (isunsubscribed subscription))))
+    (is (isunsubscribed subscriber))))
 
 (test thrown
   (let* ((o (thrown "fail"))
          (collector)
-         (subscription (subscribe o (observer :onfail (lambda (reason) (push reason collector))
+         (subscriber (subscribe o (observer :onfail (lambda (reason) (push reason collector))
                                               :onover (lambda () (push "end" collector))))))
     (is (equal (reverse collector) (list "fail")))
-    (is (isunsubscribed subscription))))
+    (is (isunsubscribed subscriber))))
 
 ;; filtering operators
 
@@ -644,7 +644,7 @@
                                 (sleep 0.05))))
                (lambda () (push "source unsub" collector)))))
          (times)
-         (subscription
+         (subscriber
           (subscribe
            (throttle
             o
@@ -667,7 +667,7 @@
              (push (get-internal-real-time) times)
              (signal-semaphore semaphore)))))
     (join-thread th)
-    (unsubscribe subscription)
+    (unsubscribe subscriber)
     (is (equal (reverse collector) (list "gen 0" 0 "receive 0" "gen 1" "send 0" "unsub 0"
                                          "gen 2" 2 "receive 2" "gen 3" "send 0" "unsub 2"
                                          "gen 4" 4 "receive 4" "gen 5" "send 0" "unsub 4"
@@ -921,13 +921,13 @@
                               (next observer (+ (+ x 1) val)))
                             (lambda ()
                               (push (format nil "inner unsub ~A" val) collector))))))
-         (subscription (subscribe (flatmap o observablefn)
+         (subscriber (subscribe (flatmap o observablefn)
                                   (observer :onnext (lambda (value) (push value collector))
                                             :onover (lambda () (push "over" collector))))))
     (is (equal (reverse collector) (list 11 12 13
                                          21 22 23
                                          31 32 33)))
-    (unsubscribe subscription)
+    (unsubscribe subscriber)
     (is (equal (reverse collector) (list 11 12 13
                                          21 22 23
                                          31 32 33
@@ -990,12 +990,12 @@
                                     (lambda ()
                                       (push (format nil "inner unsub ~A" val) collector))))
                                  (lambda (x) (+ x val)))))
-         (subscription (subscribe (switchmap o observablefn)
+         (subscriber (subscribe (switchmap o observablefn)
                                   (lambda (value) (push value collector)))))
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
                                          31 32 33)))
-    (unsubscribe subscription)
+    (unsubscribe subscriber)
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
                                          31 32 33 "inner unsub 30"
@@ -1017,13 +1017,13 @@
                                     (lambda ()
                                       (push (format nil "inner unsub ~A" val) collector))))
                                  (lambda (x) (+ x val)))))
-         (subscription (subscribe (switchmap o observablefn)
+         (subscriber (subscribe (switchmap o observablefn)
                                   (observer :onnext (lambda (value) (push value collector))
                                             :onover (lambda () (push "over" collector))))))
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
                                          31 32 33)))
-    (unsubscribe subscription)
+    (unsubscribe subscriber)
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
                                          31 32 33 "inner unsub 30"
@@ -1071,14 +1071,14 @@
                                     (lambda ()
                                       (push (format nil "inner unsub ~A" val) collector))))
                                  (lambda (x) (+ x val)))))
-         (subscription (subscribe (switchmap o observablefn)
+         (subscriber (subscribe (switchmap o observablefn)
                                   (observer :onnext (lambda (value) (push value collector))
                                             :onfail (lambda (reason) (push reason collector))))))
     (is (equal (reverse collector) (list 11 12 13
                                          "fail"
                                          "inner unsub 10"
                                          "source unsub")))
-    (unsubscribe subscription)
+    (unsubscribe subscriber)
     (is (equal (reverse collector) (list 11 12 13
                                          "fail"
                                          "inner unsub 10"
