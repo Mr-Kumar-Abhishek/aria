@@ -86,7 +86,10 @@
                    :type boolean)
    (lock :initform (caslock)
          :accessor lock
-         :type caslock)))
+         :type caslock)
+   (belong :initarg :belong
+           :accessor belong
+           :type subscriber)))
 
 (defclass observer ()
   ((onnext :initarg :onnext
@@ -178,17 +181,6 @@
     (setf (onover self) (broadcast self #'onover))
     self))
 
-(defmethod subscription-pass (self)
-  (declare (ignorable self))
-  (make-instance 'subscription :onunsubscribe #'empty-function))
-
-(defmethod subscription-pass ((self function))
-  (let ((unsubscribed))
-    (make-instance 'subscription :onunsubscribe (lambda () (unless unsubscribed (setf unsubscribed t) (funcall self))))))
-
-(defmethod subscription-pass ((self subscription))
-  self)
-
 (defmethod subscribe ((self observable) (observer observer))
   (let ((subscriber (outer-subscriber observer)))
     (connect subscriber (observer :onnext (on-notifynext subscriber)
@@ -222,6 +214,21 @@
    (connector :initform nil
               :accessor connector
               :type (or null observer))))
+
+(defmethod once ((self function))
+  (let ((lock (caslock))
+        (done))
+    (lambda ()
+      (unless done
+        (with-caslock-once lock
+          (funcall self))))))
+
+(defmethod subscription-pass (self (subscriber subscriber))
+  (declare (ignorable self))
+  (make-instance 'subscription :onunsubscribe #'empty-function :belong subscriber))
+
+(defmethod subscription-pass ((self function) (subscriber subscriber))
+  (make-instance 'subscription :onunsubscribe (once self) :belong subscriber))
 
 (defclass buffer ()
   ())
@@ -336,7 +343,7 @@
   subscriber)
 
 (defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
-  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber))))
+  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber) subscriber)))
 
 (defmethod subscribe-subscriber ((self observable) (subscriber outer-subscriber))
   (safe-funcall (onbefore subscriber))
@@ -464,7 +471,11 @@
 (defmethod unsubscribe ((self subscription))
   (with-caslock-once (lock self)
     (setf (isunsubscribed self) t)
-    (safe-funcall (onunsubscribe self))))
+    (let ((subscriber (belong self)))
+      (unless (or (isstop subscriber) (isclose subscriber))
+        (unsubscribe subscriber)))
+    (safe-funcall (onunsubscribe self)))
+  nil)
 
 (defmethod unsubscribe (self))
 

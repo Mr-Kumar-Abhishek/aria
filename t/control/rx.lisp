@@ -100,13 +100,17 @@
     (is (subscriptionp (subscribe o (observer :onnext (lambda (value) value)))))))
 
 (test subscription-manually-unsubscribe
-  (let* ((collector)
+  (let* ((event)
+         (collector)
          (o (observable
              (lambda (observer)
-               (declare (ignorable observer))
+               (setf event (lambda () (next observer "next")))
                (lambda () (push "unsub" collector))))))
-    (unsubscribe (subscribe o (observer :onfail (lambda () (push "fail" collector))
-                                        :onover (lambda (reason) (push reason collector)))))
+    (unsubscribe (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                        :onfail (lambda (reason) (declare (ignorable reason)) (push "fail" collector))
+                                        :onover (lambda () (push "over" collector)))))
+    (is (equal (reverse collector) (list "unsub")))
+    (funcall event)
     (is (equal (reverse collector) (list "unsub")))))
 
 (test subscription-automatically-unsubscribe-onover
