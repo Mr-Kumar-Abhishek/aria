@@ -42,76 +42,52 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 ### provides
 
 #### observable
-- `(defclass observable ())`
-- `(defmethod observablep ((self observable)))`
-- `(defmethod observablep (self))`
 - `(defmethod observable ((revolver function)))`
-- `(defmethod subscribe ((self observable) (observer observer)))`
-- `(defmethod subscribe ((self observable) (onnext function)))`
-
-#### subscription
-- `(defclass subscription ())`
-- `(defmethod subscriptionp ((self subscription)))`
-- `(defmethod subscriptionp (self))`
-- `(defmethod unsubscribe ((self subscription)))`
-- `(defmethod isunsubscribed ((self subsription)))`
 
 #### observer
-- `(defclass observer ())`
-- `(defmethod observerp ((self observer)))`
-- `(defmethod observerp (self))`
-- `(defmethod observer (&key (onnext #'id) (onfail #'id) (onover #'id)))`
-- `(defmethod onnext ((self observer)))`
-- `(defmethod onfail ((self observer)))`
-- `(defmethod onover ((self observer)))`
-- `(defmethod next ((self observer) value))`
-- `(defmethod fail ((self observer) reason))`
-- `(defmethod over ((self observer)))`
+- `(defmethod observer (&key onnext onfail onover))`
 
 #### subject
-- `(defclass subject (observer))`
-- `(defmethod subjectp ((self subject)))`
-- `(defmethod subjectp (self))`
-- `(defmethod subscribe ((self subject) (ob observer)))`
+- `(defmethod subject ())`
+
+#### subscriber
+- `(defmethod next ((self subscriber) value))`
+- `(defmethod fail ((self subscriber) reason))`
+- `(defmethod fail ((self subscriber) reason))`
+
+#### subscribe
+- `(defmethod subscribe ((self observable) (observer observer)))`
+- `(defmethod subscribe ((self observable) (onnext function)))`
 - `(defmethod subscribe ((self subject) (onnext function)))`
+- `(defmethod subscribe ((self subject) (ob observer)))`
+- `(defmethod unsubscribe ((self subscriber)))`
+- `(defmethod isunsubscribed ((self subscriber)))`
 
-### provide for customize operator
-- `(defmethod operator ((self observable) (pass function)))`
-- `(defmethod operator-with-subscriptions-context ((self observable) (pass function)))`
-- `(defmethod subscribe-unsafe ((self observable) (observer observer)))`
-
-#### subscriptions-context
-- `(defclass subscriptions-context ())`
-- `(defmethod subscriptions ((self subscriptions-context)))`
-- `(defmethod spin-lock ((self subscriptions-context)))`
-- `(defmethod subscriptions-context ())`
-- `(defmethod register ((self subscriptions-context) (subscription subscription)))`
-- `(defmethod register-source ((self subscriptions-context) (subscription subscription)))`
-- `(defmethod unregister ((self subscriptions-context) (subscription subscription)))`
-- `(defmethod unregister ((self subscriptions-context) (subscription null))))`
-- `(defmethod unsubscribe-all ((self subscriptions-context)))`
+### operation
+- `(defmacro pipe (&rest rest))`
+- `(defmacro with-pipe (observable &rest rest))`
 
 ### provide operators
 
 #### creation
 - `(defmethod of (&rest rest))`
 - `(defmethod from ((seq sequence)))`
-- `(defmethod range ((start number) (count number)))`
+- `(defmethod range ((start integer) (count integer)))`
 - `(defmethod empty ())`
 - `(defmethod thrown (reason))`
 
 #### filtering
-- `(defmethod debounce ((self observable) (timer function) (clear function)))`
+- `(defmethod debounce ((self observable) (observablefn function)))`
 - `(defmethod distinct ((self observable) &optional (compare #'eq)))`
 - `(defmethod each ((self observable) (consumer function)))`
 - `(defmethod filter ((self observable) (predicate function)))`
 - `(defmethod head ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod ignores ((self observable)))`
 - `(defmethod sample ((self observable) (sampler observable)))`
-- `(defmethod take ((self observable) (count number)))`
+- `(defmethod take ((self observable) (count integer)))`
 - `(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod throttle ((self observable) (observablefn function)))`
-- `(defmethod throttletime ((self observable) (milliseconds number)))`
+- `(defmethod throttletime ((self observable) (milliseconds integer)))`
 
 #### transformation
 - `(defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1)))`
