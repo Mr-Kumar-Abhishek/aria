@@ -3,6 +3,7 @@
 (defpackage aria.control.rx.util.buffer
   (:use :cl)
   (:import-from :aria.control.rx.subscriber
+                :subscriber
                 :next
                 :fail
                 :over)

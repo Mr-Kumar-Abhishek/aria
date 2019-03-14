@@ -29,20 +29,25 @@
                 :before
                 :after)
   (:import-from :aria.control.rx.subscriber
+                :subscriber
+                ::isstop
+                ::spinlock
+                ::inners
                 :next
                 :fail
                 :over
                 :onnext
                 :onfail
                 :onover
-                :notifynext
-                :notifyfail
-                :notifyover
                 :on-notifynext
                 :on-notifyfail
                 :on-notifyover
                 :unsubscribe)
-  (:export :observable
+  (:export :subscriber
+           ::isstop
+           ::spinlock
+           ::inners
+           :observable
            :observer
            :next
            :fail
@@ -56,6 +61,8 @@
            :on-notifynext
            :on-notifyfail
            :on-notifyover
+           :before
+           :after
            :unsubscribe))
 
 (in-package :aria.control.rx.util.operator)

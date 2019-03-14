@@ -7,6 +7,7 @@
                 :with-caslock-once)
   (:import-from :aria.control.rx.common
                 :empty-function
+                :safe-funcall
                 :once)
   (:export :subscription
            :subscriptionp

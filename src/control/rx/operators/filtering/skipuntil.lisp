@@ -2,7 +2,8 @@
 
 (defpackage aria.control.rx.operators.filtering.skipuntil
   (:use :cl)
-  (:use :aria.control.rx.util.operator))
+  (:use :aria.control.rx.util.operator)
+  (:export :skipuntil))
 
 (in-package :aria.control.rx.operators.filtering.skipuntil)
 

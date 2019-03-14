@@ -1,6 +1,6 @@
 (in-package :cl-user)
 
-(uiop:define-package aria.control.rx.filtering
+(uiop:define-package aria.control.rx.operators.filtering
   (:use :cl)
   (:use-reexport :aria.control.rx.operators.filtering.debounce)
   (:use-reexport :aria.control.rx.operators.filtering.distinct)
@@ -18,4 +18,4 @@
   (:use-reexport :aria.control.rx.operators.filtering.throttle)
   (:use-reexport :aria.control.rx.operators.filtering.throttletime))
 
-(in-package :aria.control.rx.filtering)
+(in-package :aria.control.rx.operators.filtering)

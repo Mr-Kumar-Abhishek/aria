@@ -3,7 +3,10 @@
 (defpackage aria.control.rx.subject
   (:use :cl)
   (:import-from :aria.control.rx.observer
-                :observer)
+                :observer
+                :onnext
+                :onfail
+                :onover)
   (:export :subject
            :subjectp
            :subscribe))

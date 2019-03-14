@@ -19,17 +19,18 @@
             ((:file "caslock")))
    (:module "control" :depends-on ("concurrency" "structure")
             :components
-            ((:file "rx" :depends-on ((:module "rx")))
-             (:module "rx"
+            ((:file "rx" :depends-on ("rx-module"))
+             (:module "rx-module"
+                      :pathname "rx"
                       :components
                       ((:file "common")
-                       (:file "inner-subscriber" :depends-on ("subscriber"))
+                       (:file "inner-subscriber" :depends-on ("observable" "subscriber"))
                        (:file "observable")
                        (:file "observer" :depends-on ("common"))
-                       (:file "operators" :depends-on ("operators"))
-                       (:file "outer-subscriber" :depends-on ("common" "observer" "subscriber"))
+                       (:file "operators" :depends-on ("operators-module"))
+                       (:file "outer-subscriber" :depends-on ("common" "observable" "observer" "subject" "subscriber"))
                        (:file "subject" :depends-on ("observer"))
-                       (:file "subscriber" :depends-on ("common" "observer" "subscription"))
+                       (:file "subscriber" :depends-on ("common" "observable" "observer" "subscription"))
                        (:file "subscription" :depends-on ("common"))
                        (:module "util" :depends-on ("inner-subscriber" "observable" "observer" "outer-subscriber" "subject" "subscriber")
                                 :components
@@ -37,18 +38,21 @@
                                  (:file "operation")
                                  (:file "operator")
                                  (:file "subscribe")))
-                       (:module "operators" :depends-on ("common" "util")
+                       (:module "operators-module" :depends-on ("common" "util")
+                                :pathname "operators"
                                 :components
-                                ((:file "creation" :depends-on ((:module "creation")))
-                                 (:module "creation"
+                                ((:file "creation" :depends-on ("creation-module"))
+                                 (:module "creation-module"
+                                          :pathname "creation"
                                           :components
                                           ((:file "empty")
                                            (:file "from")
                                            (:file "of")
                                            (:file "range")
                                            (:file "thrown")))
-                                 (:file "filtering" :depends-on ("filtering"))
-                                 (:module "filtering"
+                                 (:file "filtering" :depends-on ("filtering-module"))
+                                 (:module "filtering-module"
+                                          :pathname "filtering"
                                           :components
                                           ((:file "debounce")
                                            (:file "distinct")
@@ -65,8 +69,9 @@
                                            (:file "take")
                                            (:file "throttle")
                                            (:file "throttletime")))
-                                 (:file "transformation" :depends-on ("transformation"))
-                                 (:module "transformation"
+                                 (:file "transformation" :depends-on ("transformation-module"))
+                                 (:module "transformation-module"
+                                          :pathname "transformation"
                                           :components
                                           ((:file "flatmap")
                                            (:file "mapper")

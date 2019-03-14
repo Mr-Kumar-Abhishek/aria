@@ -1,13 +1,29 @@
 (in-package :cl-user)
 
-(defpackage aira.control.rx.outer-subscriber
+(defpackage aria.control.rx.outer-subscriber
   (:use :cl)
   (:import-from :aria.control.rx.common
-                :empty-function)
+                :empty-function
+                :safe-funcall)
+  (:import-from :aria.control.rx.observable
+                :observable)
   (:import-from :aria.control.rx.observer
                 :observer)
   (:import-from :aria.control.rx.subscriber
-                :subscriber)
+                :subscriber
+                :next
+                :fail
+                :over
+                :notifynext
+                :notifyfail
+                :notifyover
+                :on-notifynext
+                :on-notifyfail
+                :on-notifyover
+                :connect
+                :subscribe-subscriber)
+  (:import-from :aria.control.rx.subject
+                :subscribe)
   (:export :outer-subscriber
            :notifynext
            :notifyfail

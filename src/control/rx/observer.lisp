@@ -6,6 +6,9 @@
                 :empty-function)
   (:export :observer
            :observerp
+           :nexr
+           :fail
+           :over
            :onnext
            :onfail
            :onover))
@@ -34,7 +37,6 @@
   (declare (ignorable self))
   nil)
 
-#|
 (defmethod next ((self observer) value)
   (funcall (onnext self) value)
   nil)
@@ -46,4 +48,3 @@
 (defmethod over ((self observer))
   (funcall (onover self))
   nil)
-|#

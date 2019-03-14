@@ -8,13 +8,21 @@
                 :with-caslock-once)
   (:import-from :aria.control.rx.common
                 :safe-funcall)
+  (:import-from :aria.control.rx.observable
+                :observable
+                ::revolver)
   (:import-from :aria.control.rx.observer
+                :next
+                :fail
+                :over
                 :observer
                 :onnext
                 :onfail
                 :onover)
   (:import-from :aria.control.rx.subscription
+                ::subscription-pass
                 :subscription
+                :unsubscribe
                 :isunsubscribed)
   (:export :subscriber
            :subscriberp

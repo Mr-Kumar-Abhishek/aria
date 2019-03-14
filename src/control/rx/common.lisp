@@ -2,6 +2,9 @@
 
 (defpackage aria.control.rx.common
   (:use :cl)
+  (:import-from :aria.concurrency.caslock
+                :caslock
+                :with-caslock-once)
   (:export :empty-function
            :safe-funcall
            :id

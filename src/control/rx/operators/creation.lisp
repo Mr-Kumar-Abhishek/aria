@@ -1,6 +1,6 @@
 (in-package :cl-user)
 
-(uiop:define-package aria.control.rx.creation
+(uiop:define-package aria.control.rx.operators.creation
   (:use :cl)
   (:use-reexport :aria.control.rx.operators.creation.empty)
   (:use-reexport :aria.control.rx.operators.creation.from)
@@ -8,4 +8,4 @@
   (:use-reexport :aria.control.rx.operators.creation.range)
   (:use-reexport :aria.control.rx.operators.creation.thrown))
 
-(in-package :aria.control.rx.creation)
+(in-package :aria.control.rx.operators.creation)

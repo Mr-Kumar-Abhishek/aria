@@ -12,9 +12,6 @@
   (:import-from :aria.concurrency.caslock
                 :caslock
                 :with-caslock)
-  (:import-from :aria.control.rx.subscriber
-                ::spinlock
-                ::inners)
   (:import-from :aria.control.rx.util.buffer
                 :nextbuffer
                 :process-buffer)
