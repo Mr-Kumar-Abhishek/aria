@@ -4,13 +4,7 @@
   :pathname "src/"
   :in-order-to ((test-op (test-op "aria-test")))
   :components
-  ((:module "structure"
-            :components
-            ((:file "queue")
-             (:file "miso-queue" :depends-on ("queue"))
-             (:file "mimo-queue" :depends-on ("queue" "miso-queue"))
-             (:file "pair-heap")))
-   (:module "asynchronous" :depends-on ("structure")
+  ((:module "asynchronous" :depends-on ("structure")
             :components
             ((:file "scheduler")
              (:file "timer" :depends-on ("scheduler"))))
@@ -76,4 +70,10 @@
                                           ((:file "flatmap")
                                            (:file "mapper")
                                            (:file "mapto")
-                                           (:file "switchmap")))))))))))
+                                           (:file "switchmap")))))))))
+   (:module "structure"
+            :components
+            ((:file "queue")
+             (:file "miso-queue" :depends-on ("queue"))
+             (:file "mimo-queue" :depends-on ("queue" "miso-queue"))
+             (:file "pair-heap")))))
