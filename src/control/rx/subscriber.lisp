@@ -184,5 +184,8 @@
 (defmethod unsubscribe ((self subscriber))
   (unsubscribe (source self)))
 
+(defmethod unsubscribe ((self null))
+  (declare (ignorable self)))
+
 (defmethod isunsubscribed ((self subscriber))
   (isunsubscribed (source self)))

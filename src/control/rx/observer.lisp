@@ -26,8 +26,8 @@
            :accessor onover
            :type function)))
 
-(defmethod observer (&key (onnext #'empty-function) (onfail #'empty-function) (onover #'empty-function))
-  (make-instance 'observer :onnext onnext :onfail onfail :onover onover))
+(defmethod observer (&key onnext onfail onover)
+  (make-instance 'observer :onnext (or onnext #'empty-function) :onfail (or onfail #'empty-function) :onover (or onover #'empty-function)))
 
 (defmethod observerp ((self observer))
   (declare (ignorable self))

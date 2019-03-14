@@ -10,7 +10,7 @@
 
 (in-package :aria.control.rx.operators.filtering.skip)
 
-(defmethod skip ((self observable) (number number))
+(defmethod skip ((self observable) (integer integer))
   (operator self
             (lambda (subscriber)
               (let ((count 0)
@@ -18,7 +18,7 @@
                 (observer :onnext
                           (lambda (value)
                             (with-caslock caslock
-                              (if (< count number)
+                              (if (< count integer)
                                   (incf count)
                                   (notifynext subscriber value))))
                           :onfail (on-notifyfail subscriber)
