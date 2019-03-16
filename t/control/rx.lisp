@@ -56,6 +56,7 @@
                 :throttletime)
   ;; transformation operators
   (:import-from :aria.control.rx
+                :concatmap
                 :flatmap
                 :mapper
                 :mapto
@@ -756,6 +757,42 @@
     (is (equal (reverse collector) (list 0)))))
 
 ;; transformation operators
+(test concatmap
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore)))))
+         (timer (gen-timer))
+         (collector)
+         (o (observable (lambda (observer)
+                          (settimeout timer (lambda ()
+                                              (dotimes (x 3)
+                                                (next observer (* 10 (+ x 1))))))
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (mapper (observable
+                                  (lambda (observer)
+                                    (settimeout timer (lambda ()
+                                                        (dotimes (x 3)
+                                                          (next observer (+ x 1)))
+                                                        (over observer)))
+                                    (lambda ()
+                                      (push (format nil "inner unsub ~A" val) collector)
+                                      (signal-semaphore semaphore))))
+                                 (lambda (x) (+ x val)))))
+         (subscriber (subscribe (concatmap o observablefn)
+                                (observer :onnext (lambda (value) (push value collector))
+                                          :onover (lambda () (push "over" collector))))))
+    (join-thread th)
+    (end timer)
+    (is (equal (reverse collector) (list 11 12 13  "inner unsub 10"
+                                         21 22 23 "inner unsub 20"
+                                         31 32 33 "inner unsub 30")))
+    (unsubscribe subscriber)
+    (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
+                                         21 22 23 "inner unsub 20"
+                                         31 32 33 "inner unsub 30"
+                                         "source unsub")))))
+
 (test flatmap
   (let* ((collector)
          (o (observable (lambda (observer)

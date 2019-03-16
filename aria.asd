@@ -67,7 +67,8 @@
                                  (:module "transformation-module"
                                           :pathname "transformation"
                                           :components
-                                          ((:file "flatmap")
+                                          ((:file "concatmap" :depends-on ("flatmap"))
+                                           (:file "flatmap")
                                            (:file "mapper")
                                            (:file "mapto")
                                            (:file "switchmap")))))))))
