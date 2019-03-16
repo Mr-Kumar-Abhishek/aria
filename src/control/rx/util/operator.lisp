@@ -31,8 +31,6 @@
   (:import-from :aria.control.rx.subscriber
                 :subscriber
                 ::isstop
-                ::spinlock
-                ::inners
                 :next
                 :fail
                 :over
