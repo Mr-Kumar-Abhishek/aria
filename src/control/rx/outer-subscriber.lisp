@@ -5,6 +5,8 @@
   (:import-from :aria.control.rx.common
                 :empty-function
                 :safe-funcall)
+  (:import-from :aria.control.rx.interface
+                :subscribe)
   (:import-from :aria.control.rx.observable
                 :observable)
   (:import-from :aria.control.rx.observer
@@ -22,8 +24,6 @@
                 :on-notifyover
                 :connect
                 :subscribe-subscriber)
-  (:import-from :aria.control.rx.subject
-                :subscribe)
   (:export :outer-subscriber
            :notifynext
            :notifyfail

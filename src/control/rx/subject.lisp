@@ -2,6 +2,8 @@
 
 (defpackage aria.control.rx.subject
   (:use :cl)
+  (:import-from :aria.control.rx.interface
+                :subscribe)
   (:import-from :aria.control.rx.observer
                 :observer
                 :onnext
