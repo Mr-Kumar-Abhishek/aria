@@ -10,4 +10,5 @@
 (in-package :aria.control.rx.operators.transformation.concatmap)
 
 (defmethod concatmap ((self observable) (observablefn function))
+  "not guarantee order when parallel"
   (flatmap self observablefn 1))

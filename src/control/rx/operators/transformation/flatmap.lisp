@@ -30,7 +30,8 @@
 (defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1))
   "observablefn needs receive a value from next and return a observable
    flatmap will hold all subscriptions from observablefn
-   concurrent could limit max size of hold subscriptions"
+   concurrent could limit max size of hold subscriptions
+   not guarantee order when parallel"
   (operator self
    (lambda (subscriber)
      (let ((isstop)
