@@ -9,9 +9,6 @@
                 :en
                 :de
                 :queue-empty-p)
-  (:import-from :aria.concurrency.caslock
-                :caslock
-                :with-caslock)
   (:export :flatmap))
 
 (in-package :aria.control.rx.operators.transformation.flatmap)
@@ -41,13 +38,15 @@
                                            :onfail (onfail subscriber)
                                            :onover
                                            (lambda ()
-                                             (with-caslock caslock
-                                               (notifyover inner)
-                                               (if (and isstop (queue-empty-p buffers) (<= active 1))
-                                                   (notifyover subscriber)))
-                                             (if (queue-empty-p buffers)
-                                                 (with-caslock caslock (decf active))
-                                                 (funcall (de buffers) :lazy)))))))))
+                                             (let ((buffer))
+                                               (with-caslock caslock
+                                                 (notifyover inner)
+                                                 (if (and isstop (queue-empty-p buffers) (<= active 1))
+                                                     (notifyover subscriber))
+                                                 (if (queue-empty-p buffers)
+                                                     (decf active)
+                                                     (setf buffer (de buffers))))
+                                               (if buffer (funcall buffer :lazy))))))))))
                      (if (or (< active concurrent)
                              (< concurrent 0))
                          (funcall (lazysub value) :immediately)
