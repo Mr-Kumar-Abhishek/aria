@@ -95,6 +95,7 @@ frp for cl inspired by [reactivex](http://reactivex.io/)
 
 #### transformation
 - `(defmethod concatmap ((self observable) (observablefn function)))`
+- `(defmethod exhaustmap ((self observable) (observablefn function)))`
 - `(defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1)))`
 - `(defmethod mapper ((self observable) (function function)))`
 - `(defmethod mapto ((self observable) value)))`
