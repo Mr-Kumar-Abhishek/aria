@@ -35,7 +35,7 @@ a spin lock based on cas(compare and swap)
 - `(defmacro with-caslock-once (caslock &rest expr))`
 
 ## aria.control.rx
-frp for cl inspired by [reactivex](http://reactivex.io/)
+Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/)
 
 [staltz's introduce of frp](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)
 
