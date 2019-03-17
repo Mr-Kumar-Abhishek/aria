@@ -56,6 +56,7 @@
                 :throttletime)
   ;; transformation operators
   (:import-from :aria.control.rx
+                :buffer
                 :concatmap
                 :exhaustmap
                 :flatmap
@@ -758,6 +759,39 @@
     (is (equal (reverse collector) (list 0)))))
 
 ;; transformation operators
+(test buffer
+  (let* ((collector)
+         (event1)
+         (event2)
+         (event3)
+         (o (observable (lambda (observer)
+                          (push "source start" collector)
+                          (let ((x 0)) (setf event1 (lambda () (next observer (incf x)))))
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (notifier (observable
+                    (lambda (observer)
+                      (push "inner start" collector)
+                      (setf event2 (lambda () (next observer nil)))
+                      (setf event3 (lambda () (over observer)))
+                      (lambda ()
+                        (push "inner unsub" collector))))))
+    (subscribe (buffer o notifier)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (funcall event1) (funcall event1) (funcall event1) (funcall event2)
+    (funcall event2)
+    (funcall event1) (funcall event1) (funcall event2)
+    (funcall event3)
+    (is (equal (reverse collector) (list "inner start"
+                                         "source start"
+                                         '(1 2 3)
+                                         nil
+                                         '(4 5)
+                                         "over"
+                                         "inner unsub"
+                                         "source unsub")))))
+
 (test concatmap
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore)))))
