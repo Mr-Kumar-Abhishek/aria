@@ -2,6 +2,13 @@
 
 (defpackage aria.control.rx.util.operator
   (:use :cl)
+  (:import-from :aria.concurrency.caslock
+                :caslock
+                :with-caslock
+                :with-caslock-once)
+  (:export :caslock
+           :with-caslock
+           :with-caslock-once)
   (:import-from :aria.control.rx.inner-subscriber
                 :inner-subscriber
                 :subscribe-subscriber)

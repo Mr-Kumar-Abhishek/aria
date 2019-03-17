@@ -77,7 +77,8 @@
            :throttle
            :throttletime)
   ;;transformation operators
-  (:export :concatmap
+  (:export :buffer
+           :concatmap
            :exhaustmap
            :flatmap
            :mapper
