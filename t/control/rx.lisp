@@ -57,6 +57,7 @@
   ;; transformation operators
   (:import-from :aria.control.rx
                 :concatmap
+                :exhaustmap
                 :flatmap
                 :mapper
                 :mapto
@@ -788,6 +789,37 @@
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
                                          31 32 33 "inner unsub 30"
+                                         "source unsub")))))
+
+(test exhaustmap
+  (let* ((collector)
+         (event1)
+         (event2)
+         (event3)
+         (o (observable (lambda (observer)
+                          (let ((x 0))
+                            (setf event1 (lambda () (next observer (* 10 (incf x))))))
+                          (lambda ()
+                            (push "source unsub" collector)))))
+         (observablefn (lambda (val)
+                         (mapper (observable
+                                  (lambda (observer)
+                                    (let ((x 0))
+                                      (setf event2 (lambda () (next observer (incf x))))
+                                      (setf event3 (lambda () (over observer))))
+                                    (lambda ()
+                                      (push (format nil "inner unsub ~A" val) collector))))
+                                 (lambda (x) (+ x val)))))
+         (subscriber (subscribe (exhaustmap o observablefn)
+                                (observer :onnext (lambda (value) (push value collector))
+                                          :onover (lambda () (push "over" collector))))))
+    (funcall event1) (funcall event2) (funcall event1) (funcall event2)
+    (funcall event3)
+    (funcall event1) (funcall event2) (funcall event2)
+    (unsubscribe subscriber)
+    (is (equal (reverse collector) (list 11 12 "inner unsub 10"
+                                         31 32
+                                         "inner unsub 30"
                                          "source unsub")))))
 
 (test flatmap
