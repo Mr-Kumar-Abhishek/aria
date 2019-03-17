@@ -2,6 +2,9 @@
 
 (defpackage aria.structure.queue
   (:use :cl)
+  (:import-from :aria.structure.interface
+                :en
+                :de)
   (:export :queue
            :make-queue
            :en

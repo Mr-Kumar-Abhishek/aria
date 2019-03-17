@@ -77,7 +77,9 @@
                                            (:file "switchmap")))))))))
    (:module "structure"
             :components
-            ((:file "queue")
-             (:file "miso-queue" :depends-on ("queue"))
-             (:file "mimo-queue" :depends-on ("queue" "miso-queue"))
-             (:file "pair-heap")))))
+            ((:file "interface")
+             (:file "mimo-queue" :depends-on ("interface" "queue" "miso-queue"))
+             (:file "miso-queue" :depends-on ("interface" "queue"))
+             (:file "pair-heap" :depends-on ("interface"))
+             (:file "queue" :depends-on ("interface"))
+             (:file "ring" :depends-on ("interface"))))))

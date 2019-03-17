@@ -6,12 +6,14 @@
   (:shadow :copy-tree)
   (:import-from :atomics
                 :atomic-update)
+  (:import-from :aria.structure.interface
+                :en
+                :de)
   (:import-from :aria.structure.queue
                 :queue
                 :make-queue
                 :en
-                :de
-                :queue-empty-p)
+                :de)
   (:export :pair-heap
            :make-heap
            :en
