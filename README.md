@@ -37,7 +37,7 @@ a spin lock based on cas(compare and swap)
 ## aria.control.rx
 Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/)
 
-[staltz's introduce of frp](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)
+[staltz's introduce of Reactive Programming](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)
 
 ### provides
 
