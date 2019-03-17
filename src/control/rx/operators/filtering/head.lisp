@@ -3,9 +3,6 @@
 (defpackage aria.control.rx.operators.filtering.head
   (:use :cl)
   (:use :aria.control.rx.util.operator)
-  (:import-from :aria.concurrency.caslock
-                :caslock
-                :with-caslock-once)
   (:import-from :aria.control.rx.common
                 :tautology)
   (:export :head))

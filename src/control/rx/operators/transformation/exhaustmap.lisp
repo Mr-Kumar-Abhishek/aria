@@ -3,9 +3,6 @@
 (defpackage aria.control.rx.operators.transformation.exhaustmap
   (:use :cl)
   (:use :aria.control.rx.util.operator)
-  (:import-from :aria.concurrency.caslock
-                :caslock
-                :with-caslock)
   (:export :exhaustmap))
 
 (in-package :aria.control.rx.operators.transformation.exhaustmap)

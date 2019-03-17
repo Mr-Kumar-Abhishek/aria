@@ -3,9 +3,6 @@
 (defpackage aria.control.rx.operators.filtering.take
   (:use :cl)
   (:use :aria.control.rx.util.operator)
-  (:import-from :aria.concurrency.caslock
-                :caslock
-                :with-caslock)
   (:export :take))
 
 (in-package :aria.control.rx.operators.filtering.take)
