@@ -37,16 +37,14 @@
                                (funcall observablefn value)
                                subscriber
                                (lambda (inner)
-                                 (observer :onnext
-                                           (lambda (value)
-                                             (notifynext subscriber value))
+                                 (observer :onnext (on-notifynext subscriber)
                                            :onfail (onfail subscriber)
                                            :onover
                                            (lambda ()
                                              (with-caslock caslock
+                                               (notifyover inner)
                                                (if (and isstop (queue-empty-p buffers) (<= active 1))
-                                                   (notifyover subscriber))
-                                               (notifyover inner))
+                                                   (notifyover subscriber)))
                                              (if (queue-empty-p buffers)
                                                  (with-caslock caslock (decf active))
                                                  (funcall (de buffers) :lazy)))))))))

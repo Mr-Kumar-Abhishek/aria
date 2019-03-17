@@ -33,8 +33,8 @@
                                              :onover
                                              (lambda ()
                                                (with-caslock caslock
-                                                 (if isstop (notifyover subscriber))
-                                                 (notifyover inner)))))))))
+                                                 (notifyover inner)
+                                                 (if isstop (notifyover subscriber))))))))))
                  :onfail (lambda (reason)
                            (notifyfail subscriber reason))
                  :onover (lambda ()

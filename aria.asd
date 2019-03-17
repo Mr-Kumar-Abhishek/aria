@@ -69,6 +69,7 @@
                                           :pathname "transformation"
                                           :components
                                           ((:file "concatmap" :depends-on ("flatmap"))
+                                           (:file "exhaustmap")
                                            (:file "flatmap")
                                            (:file "mapper")
                                            (:file "mapto")
