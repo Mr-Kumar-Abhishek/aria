@@ -22,16 +22,16 @@
 
 (in-package :aria.structure.pair-heap)
 
-(defstruct heap
+(defstruct tree
   (sub (queue) :type queue)
   (element nil))
 
 (defstruct pair-heap
-  (heap (make-heap) :type heap)
+  (tree (make-tree) :type tree)
   (compare nil :type function)
   (accessor nil :type function))
 
-(defstruct (tree (:include pair-heap)))
+(defstruct (heap (:include pair-heap)))
 
 (defmethod compare (x y)
   (< x y))
@@ -40,26 +40,26 @@
   element)
 
 (defmethod pair-heap (&key (element nil) (compare #'compare) (accessor #'accessor))
-  (let ((tree (make-tree :compare compare :accessor accessor)))
-    (setf (heap-element (tree-heap tree)) element)
-    tree))
+  (let ((heap (make-heap :compare compare :accessor accessor)))
+    (setf (tree-element (heap-tree heap)) element)
+    heap))
 
-(defmethod merge ((self heap) (heap heap) (compare function) (accessor function))
-  (let ((left (heap-element self))
-        (right (heap-element heap)))
+(defmethod merge ((self tree) (tree tree) (compare function) (accessor function))
+  (let ((left (tree-element self))
+        (right (tree-element tree)))
     (if left
         (if right
             (if (funcall compare (funcall accessor left) (funcall accessor right))
-                (make-heap :element left :sub (en (heap-sub self) heap))
-                (make-heap :element right :sub (en (heap-sub heap) self)))
+                (make-tree :element left :sub (en (tree-sub self) tree))
+                (make-tree :element right :sub (en (tree-sub tree) self)))
             self)
-        heap)))
+        tree)))
 
-(defmethod %en ((self heap) element (compare function) (accessor function))
-  (merge (make-heap :element element) self compare accessor))
+(defmethod %en ((self tree) element (compare function) (accessor function))
+  (merge (make-tree :element element) self compare accessor))
 
-(defmethod en ((self tree) element)
-  (setf (tree-heap self) (%en (tree-heap self) element (tree-compare self) (tree-accessor self)))
+(defmethod en ((self heap) element)
+  (setf (heap-tree self) (%en (heap-tree self) element (heap-compare self) (heap-accessor self)))
   self)
 
 (defmethod merge-pairs ((self queue) (compare function) (accessor function))
@@ -69,18 +69,18 @@
         (if right
             (merge (merge left right compare accessor) (merge-pairs self compare accessor) compare accessor)
             left)
-        (make-heap))))
+        (make-tree))))
 
-(defmethod de ((self tree))
-  (let ((element (heap-element (tree-heap self))))
-    (setf (tree-heap self) (merge-pairs (heap-sub (tree-heap self)) (tree-compare self) (tree-accessor self)))
+(defmethod de ((self heap))
+  (let ((element (tree-element (heap-tree self))))
+    (setf (heap-tree self) (merge-pairs (tree-sub (heap-tree self)) (heap-compare self) (heap-accessor self)))
     element))
 
-(defmethod %emptyp ((self heap))
-  (not (heap-element self)))
+(defmethod %emptyp ((self tree))
+  (not (tree-element self)))
 
-(defmethod emptyp ((self tree))
-  (%emptyp (tree-heap self)))
+(defmethod emptyp ((self heap))
+  (%emptyp (heap-tree self)))
 
-(defmethod find-top ((self tree))
-  (heap-element (tree-heap self)))
+(defmethod find-top ((self heap))
+  (tree-element (heap-tree self)))
