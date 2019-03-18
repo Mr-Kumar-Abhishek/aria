@@ -6,11 +6,8 @@
   (:import-from :aria.structure.ring
                 :make-ring
                 :en
-                :de
-                :der
                 :size
-                :tolist
-                :emptyp)
+                :tolist)
   (:export :buffercount))
 
 (in-package :aria.control.rx.operators.transformation.buffercount)
