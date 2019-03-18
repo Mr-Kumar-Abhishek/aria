@@ -46,10 +46,14 @@
                                                      (decf active)
                                                      (setf buffer (de buffers))))
                                                (if buffer (funcall buffer :lazy))))))))))
-                     (if (or (< active concurrent)
-                             (< concurrent 0))
-                         (funcall (lazysub value) :immediately)
-                         (en buffers (lazysub value)))))
+                     (let ((immediate))
+                       (with-caslock caslock
+                         (if (or (< active concurrent)
+                                 (< concurrent 0))
+                             (setf immediate t)
+                             (en buffers (lazysub value))))
+                       (if immediate
+                         (funcall (lazysub value) :immediately)))))
                  :onfail (on-notifyfail subscriber)
                  :onover (lambda ()
                            (with-caslock caslock
