@@ -3,7 +3,6 @@ data structures and some trival stuffs in common lisp for my lady UK Aria H. Kan
 
 ## constructor naming rules 
 - begin with `gen-` means a service-like stuff will be start up by the constructor
-- begin with `make-` means a data structure will be alloc by the constructor
 - begin with nothing means nothing special
 
 ## aria.asynchronous.scheduler
@@ -106,7 +105,7 @@ Just a normal queue
 
 ### provides
 - `(defstruct queue)`
-- `(defun make-queue())`
+- `(defmethod queue ())`
 - `(defmethod en ((self queue) e))`
 - `(defmethod de ((self queue)))`
 - `(defmethod emptyp ((self queue))`
@@ -119,8 +118,9 @@ This miso queue is designed for Multi-In-Single-Out situation, the operation `de
 
 ### provides
 - `(defstruct queue)`
-- `(defun make-queue())`
-- `(defmethod en ((self queue) e))`
+- `(defstruct (miso-queue (:include queue)))`
+- `(defmethod miso-queue ())`
+- `(defmethod en ((self miso-queue) e))`
 - `(defmethod de ((self queue)))`
 - `(defmethod emptyp ((self queue))`
 
@@ -132,10 +132,11 @@ This miso queue is designed for Multi-In-Multi-Out situation, methods `en`, `de`
 
 ### provides
 - `(defstruct queue)`
-- `(defun make-queue())`
-- `(defmethod en ((self queue) e))`
-- `(defmethod de ((self queue)))`
-- `(defmethod emptyp ((self queue))`
+- `(defstruct (mimo-queue (:include miso-queue)))`
+- `(defmethod mimo-queue ())`
+- `(defmethod en ((self miso-queue) e))`
+- `(defmethod de ((self mimo-queue)))`
+- `(defmethod emptyp ((self mimo-queue)))`
 
 ## aria.structure.pair-heap
 A pairing heap, [wiki](https://en.wikipedia.org/wiki/Pairing_heap)
@@ -147,7 +148,7 @@ With the help of `(make-heap)`'s option `:compare` and `:accessor`, the heap cou
 
 ### provides
 - `(defstruct pair-heap)`
-- `(defmethod make-heap (&key (element nil) (compare (lambda (x y) (< x y)) (accessor (lambda (x) x)))`
+- `(defmethod pair-heap (&key (element nil) (compare (lambda (x y) (< x y)) (accessor (lambda (x) x)))`
 - `(defmethod en ((self pair-heap) e))`
 - `(defmethod de ((self pair-heap)))`
 - `(defmethod emptyp ((self pair-heap)))`
