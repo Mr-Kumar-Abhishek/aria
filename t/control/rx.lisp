@@ -57,6 +57,7 @@
   ;; transformation operators
   (:import-from :aria.control.rx
                 :buffer
+                :buffercount
                 :concatmap
                 :exhaustmap
                 :flatmap
@@ -791,6 +792,20 @@
                                          "over"
                                          "inner unsub"
                                          "source unsub")))))
+
+(test buffercount
+  (let* ((collector)
+         (o (of 0 1 2 3 4 5 6 7 8 9 10)))
+    (subscribe (buffercount o 4 2)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list '(0 1 2 3)
+                                         '(2 3 4 5)
+                                         '(4 5 6 7)
+                                         '(6 7 8 9)
+                                         '(8 9 10)
+                                         '(10)
+                                         "over")))))
 
 (test concatmap
   (let* ((semaphore (make-semaphore))
