@@ -3,8 +3,8 @@
 (defpackage aria.control.rx.operators.transformation.flatmap
   (:use :cl)
   (:use :aria.control.rx.util.operator)
-  (:import-from :aria.structure.mimo-queue
-                :mimo-queue
+  (:import-from :aria.structure.queue
+                :queue
                 :en
                 :de
                 :emptyp)
