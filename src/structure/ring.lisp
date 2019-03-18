@@ -88,5 +88,5 @@
          (length (array-total-size array))
          (size (mod (- head tail) length)))
     (dotimes (x size)
-      (push (aref array (mod (- tail x 1) length)) collect))
+      (push (aref array (mod (- head x) length)) collect))
     collect))
