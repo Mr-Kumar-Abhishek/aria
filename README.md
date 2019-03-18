@@ -142,9 +142,9 @@ This miso queue is designed for Multi-In-Multi-Out situation, methods `en`, `de`
 A pairing heap, [wiki](https://en.wikipedia.org/wiki/Pairing_heap)
 
 ### about
-In default options, `(make-heap)` will generate a min pairing heap with number type elements.
+In default options, `(pair-heap)` will generate a min pairing heap with number type elements.
 
-With the help of `(make-heap)`'s option `:compare` and `:accessor`, the heap could expand to sort by a user defined way.
+With the help of `(pair-heap)`'s option `:compare` and `:accessor`, the heap could expand to sort by a user defined way.
 
 ### provides
 - `(defstruct pair-heap)`
@@ -153,3 +153,22 @@ With the help of `(make-heap)`'s option `:compare` and `:accessor`, the heap cou
 - `(defmethod de ((self pair-heap)))`
 - `(defmethod emptyp ((self pair-heap)))`
 - `(defmethod find-top ((self pair-heap)))`
+
+## aria.structure.ring
+A circular array
+
+### about
+The first element will be erased when add element into a full circular array.
+
+Elements could be add to the circular array in both direction.
+
+### provides
+- `(defstruct ring)`
+- `(defmethod ring ((size integer)))`
+- `(defmethod en ((self ring) value))`
+- `(defmethod de ((self ring)))`
+- `(defmethod enr ((self ring) value))`
+- `(defmethod der ((self ring)))`
+- `(defmethod size ((self ring)))`
+- `(defmethod emptyp ((self ring)))`
+- `(defmethod tolist ((self ring)))`
