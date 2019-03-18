@@ -69,6 +69,7 @@
                                           :pathname "transformation"
                                           :components
                                           ((:file "buffer")
+                                           (:file "buffercount")
                                            (:file "concatmap" :depends-on ("flatmap"))
                                            (:file "exhaustmap")
                                            (:file "flatmap")
