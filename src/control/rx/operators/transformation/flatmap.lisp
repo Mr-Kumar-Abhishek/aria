@@ -25,10 +25,7 @@
        (observer :onnext
                  (lambda (value)
                    (flet ((lazysub (value)
-                            (lambda (type)
-                              (if (eq type :immediately)
-                                  (with-caslock caslock
-                                    (incf active)))
+                            (lambda ()
                               (within-inner-subscriber
                                (funcall observablefn value)
                                subscriber
@@ -45,15 +42,16 @@
                                                  (if (emptyp buffers)
                                                      (decf active)
                                                      (setf buffer (de buffers))))
-                                               (if buffer (funcall buffer :lazy))))))))))
+                                               (if buffer (funcall buffer))))))))))
                      (let ((immediate))
                        (with-caslock caslock
                          (if (or (< active concurrent)
                                  (< concurrent 0))
-                             (setf immediate t)
+                             (progn (setf immediate t)
+                                    (incf active))
                              (en buffers (lazysub value))))
                        (if immediate
-                         (funcall (lazysub value) :immediately)))))
+                         (funcall (lazysub value))))))
                  :onfail (on-notifyfail subscriber)
                  :onover (lambda ()
                            (with-caslock caslock
