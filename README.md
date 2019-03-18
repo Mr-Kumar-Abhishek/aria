@@ -93,6 +93,8 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod throttletime ((self observable) (milliseconds integer)))`
 
 #### transformation
+- `(defmethod buffer ((self observable) (notifier observable)))`
+- `(defmethod buffercount ((self observable) (count integer) &optional (overlap count)))`
 - `(defmethod concatmap ((self observable) (observablefn function)))`
 - `(defmethod exhaustmap ((self observable) (observablefn function)))`
 - `(defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1)))`
