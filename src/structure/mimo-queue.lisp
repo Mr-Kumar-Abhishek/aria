@@ -6,7 +6,8 @@
                 :cas)
   (:import-from :aria.structure.interface
                 :en
-                :de)
+                :de
+                :emptyp)
   (:import-from :aria.structure.queue
                 ::node
                 :queue
@@ -22,13 +23,13 @@
            :make-queue
            :en
            :de
-           :queue-empty-p))
+           :emptyp))
 
 (in-package :aria.structure.mimo-queue)
 
 (defmethod de ((self queue))
   (declare (optimize speed))
-  (if (queue-empty-p self)
+  (if (emptyp self)
       nil
       (let* ((tail (queue-tail self))
              (prev (node-prev tail)))
@@ -41,7 +42,7 @@
                     (setf prev (node-prev tail))))
         (node-value prev))))
 
-(defmethod queue-empty-p ((self queue))
+(defmethod emptyp ((self queue))
   (declare (optimize speed))
   (let ((tail (queue-tail self)))
     (loop while

@@ -6,7 +6,8 @@
                 :atomic-update)
   (:import-from :aria.structure.interface
                 :en
-                :de)
+                :de
+                :emptyp)
   (:import-from :aria.structure.queue
                 ::node
                 :queue
@@ -17,12 +18,12 @@
                 ::make-node
                 :make-queue
                 :de
-                :queue-empty-p)
+                :emptyp)
   (:export :queue
            :make-queue
            :en
            :de
-           :queue-empty-p))
+           :emptyp))
 
 (in-package :aria.structure.miso-queue)
 

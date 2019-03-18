@@ -8,7 +8,7 @@
                 :make-queue
                 :en
                 :de
-                :queue-empty-p)
+                :emptyp)
   (:export :flatmap))
 
 (in-package :aria.control.rx.operators.transformation.flatmap)
@@ -41,9 +41,9 @@
                                              (let ((buffer))
                                                (with-caslock caslock
                                                  (notifyover inner)
-                                                 (if (and isstop (queue-empty-p buffers) (<= active 1))
+                                                 (if (and isstop (emptyp buffers) (<= active 1))
                                                      (notifyover subscriber))
-                                                 (if (queue-empty-p buffers)
+                                                 (if (emptyp buffers)
                                                      (decf active)
                                                      (setf buffer (de buffers))))
                                                (if buffer (funcall buffer :lazy))))))))))
@@ -55,5 +55,5 @@
                  :onover (lambda ()
                            (with-caslock caslock
                              (setf isstop t)
-                             (if (and (queue-empty-p buffers) (eq active 0))
+                             (if (and (emptyp buffers) (eq active 0))
                                  (notifyover subscriber)))))))))

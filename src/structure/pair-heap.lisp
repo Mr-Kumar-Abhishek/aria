@@ -8,7 +8,8 @@
                 :atomic-update)
   (:import-from :aria.structure.interface
                 :en
-                :de)
+                :de
+                :emptyp)
   (:import-from :aria.structure.queue
                 :queue
                 :make-queue
@@ -18,7 +19,7 @@
            :make-heap
            :en
            :de
-           :heap-empty-p
+           :emptyp
            :find-top))
 
 (in-package :aria.structure.pair-heap)
@@ -81,11 +82,11 @@
     (setf (tree-heap self) (merge-pairs (heap-sub (tree-heap self)) (tree-compare self) (tree-accessor self)))
     element))
 
-(defmethod %heap-empty-p ((self heap))
+(defmethod %emptyp ((self heap))
   (not (heap-element self)))
 
-(defmethod heap-empty-p ((self tree))
-  (%heap-empty-p (tree-heap self)))
+(defmethod emptyp ((self tree))
+  (%emptyp (tree-heap self)))
 
 (defmethod find-top ((self tree))
   (heap-element (tree-heap self)))

@@ -109,7 +109,7 @@ Just a normal queue
 - `(defun make-queue())`
 - `(defmethod en ((self queue) e))`
 - `(defmethod de ((self queue)))`
-- `(defmethod queue-empty-p ((self queue))`
+- `(defmethod emptyp ((self queue))`
 
 ## aria.structure.miso-queue
 A multi-in-single-out queue
@@ -122,20 +122,20 @@ This miso queue is designed for Multi-In-Single-Out situation, the operation `de
 - `(defun make-queue())`
 - `(defmethod en ((self queue) e))`
 - `(defmethod de ((self queue)))`
-- `(defmethod queue-empty-p ((self queue))`
+- `(defmethod emptyp ((self queue))`
 
 ## aria.structure.mimo-queue
 A multi-in-multi-out queue
 
 ### about
-This miso queue is designed for Multi-In-Multi-Out situation, methods `en`, `de`, `queue-empty-p` are all thread safe.
+This miso queue is designed for Multi-In-Multi-Out situation, methods `en`, `de`, `emptyp` are all thread safe.
 
 ### provides
 - `(defstruct queue)`
 - `(defun make-queue())`
 - `(defmethod en ((self queue) e))`
 - `(defmethod de ((self queue)))`
-- `(defmethod queue-empty-p ((self queue))`
+- `(defmethod emptyp ((self queue))`
 
 ## aria.structure.pair-heap
 A pairing heap, [wiki](https://en.wikipedia.org/wiki/Pairing_heap)
@@ -150,5 +150,5 @@ With the help of `(make-heap)`'s option `:compare` and `:accessor`, the heap cou
 - `(defmethod make-heap (&key (element nil) (compare (lambda (x y) (< x y)) (accessor (lambda (x) x)))`
 - `(defmethod en ((self pair-heap) e))`
 - `(defmethod de ((self pair-heap)))`
-- `(defmethod heap-empty-p ((self pair-heap)))`
+- `(defmethod emptyp ((self pair-heap)))`
 - `(defmethod find-top ((self pair-heap)))`

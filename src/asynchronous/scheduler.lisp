@@ -18,7 +18,7 @@
                 :make-queue
                 :en
                 :de
-                :queue-empty-p)
+                :emptyp)
   (:export :scheduler
            :gen-scheduler
 	   :add
@@ -55,7 +55,7 @@
 (defmethod loop-core ((tasks queue) (endp function) (self scheduler) semaphore)
   (error-handler (de tasks))
   (if (not (funcall endp)) 
-      (progn (if (queue-empty-p tasks) (wait self tasks semaphore))
+      (progn (if (emptyp tasks) (wait self tasks semaphore))
              (loop-core tasks endp self semaphore))))
 
 (defmethod wait ((self scheduler) (tasks queue) semaphore)

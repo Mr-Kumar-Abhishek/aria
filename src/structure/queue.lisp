@@ -4,12 +4,13 @@
   (:use :cl)
   (:import-from :aria.structure.interface
                 :en
-                :de)
+                :de
+                :emptyp)
   (:export :queue
            :make-queue
            :en
            :de
-           :queue-empty-p))
+           :emptyp))
 
 (in-package :aria.structure.queue)
 
@@ -45,6 +46,6 @@
           (setf (queue-tail self) prev)))
     e))
 
-(defmethod queue-empty-p ((self queue))
+(defmethod emptyp ((self queue))
   (declare (optimize speed))
   (not (node-prev (queue-tail self))))

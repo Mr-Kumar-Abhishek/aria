@@ -17,7 +17,7 @@
                 :make-heap
                 :en
                 :de
-                :heap-empty-p
+                :emptyp
                 :find-top)
   (:export :timer
            :gen-timer
@@ -63,7 +63,7 @@
 (defmethod loop-core-inner ((scheduler scheduler) (tasks pair-heap) semaphore)
   (add scheduler
        (lambda ()
-         (if (not (heap-empty-p tasks))
+         (if (not (emptyp tasks))
              (let* ((top (find-top tasks))
                     (lack (- (task-priority top) (get-internal-real-time))))
                (if (<= lack 0)
