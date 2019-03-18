@@ -14,7 +14,6 @@
                 ::error-handler)
   (:import-from :aria.structure.pair-heap
                 :pair-heap
-                :make-heap
                 :en
                 :de
                 :emptyp
@@ -35,7 +34,7 @@
   ((scheduler :initarg :scheduler
               :accessor scheduler
               :type scheduler)
-   (tasks :initform (make-heap :accessor #'accessor)
+   (tasks :initform (pair-heap :accessor #'accessor)
           :accessor tasks
           :type pair-heap)
    (semaphore :initform (make-semaphore)

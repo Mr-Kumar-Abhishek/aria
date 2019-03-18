@@ -6,7 +6,6 @@
                 :en
                 :de)
   (:export :ring
-           :make-ring
            :en
            :de
            :enr
@@ -17,13 +16,13 @@
 
 (in-package :aria.structure.ring)
 
-(defstruct (ring (:constructor %make-ring))
+(defstruct ring
   (array nil :type array)
   (head 0 :type integer)
   (tail 0 :type integer))
 
-(defmethod make-ring ((size integer))
-  (%make-ring :array (make-array (+ 1 size))))
+(defmethod ring ((size integer))
+  (make-ring :array (make-array (+ 1 size))))
 
 (defmethod en ((self ring) value)
   (let* ((array (ring-array self))

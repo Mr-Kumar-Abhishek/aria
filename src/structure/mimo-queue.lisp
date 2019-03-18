@@ -9,25 +9,31 @@
                 :de
                 :emptyp)
   (:import-from :aria.structure.queue
-                ::node
                 :queue
+                ::node
                 ::node-prev
                 ::node-value
                 ::queue-head
                 ::queue-tail
-                ::make-node
-                :make-queue)
+                ::make-node)
   (:import-from :aria.structure.miso-queue
+                :miso-queue
                 :en)
   (:export :queue
-           :make-queue
+           :mimo-queue
            :en
            :de
            :emptyp))
 
 (in-package :aria.structure.mimo-queue)
 
-(defmethod de ((self queue))
+(defstruct (mimo-queue (:include miso-queue)))
+
+(defmethod mimo-queue ()
+  (let ((dummy (make-node :value nil)))
+    (make-mimo-queue :head dummy :tail dummy)))
+
+(defmethod de ((self mimo-queue))
   (declare (optimize speed))
   (if (emptyp self)
       nil
@@ -42,7 +48,7 @@
                     (setf prev (node-prev tail))))
         (node-value prev))))
 
-(defmethod emptyp ((self queue))
+(defmethod emptyp ((self mimo-queue))
   (declare (optimize speed))
   (let ((tail (queue-tail self)))
     (loop while

@@ -12,11 +12,9 @@
                 :emptyp)
   (:import-from :aria.structure.queue
                 :queue
-                :make-queue
                 :en
                 :de)
   (:export :pair-heap
-           :make-heap
            :en
            :de
            :emptyp
@@ -24,16 +22,12 @@
 
 (in-package :aria.structure.pair-heap)
 
-(defstruct node
-  (priority 0 :type number)
-  (value nil))
-
-(defstruct (heap (:constructor %make-heap))
-  (sub (make-queue) :type queue)
+(defstruct heap
+  (sub (queue) :type queue)
   (element nil))
 
 (defstruct pair-heap
-  (heap (%make-heap) :type heap)
+  (heap (make-heap) :type heap)
   (compare nil :type function)
   (accessor nil :type function))
 
@@ -45,7 +39,7 @@
 (defmethod accessor (element)
   element)
 
-(defmethod make-heap (&key (element nil) (compare #'compare) (accessor #'accessor))
+(defmethod pair-heap (&key (element nil) (compare #'compare) (accessor #'accessor))
   (let ((tree (make-tree :compare compare :accessor accessor)))
     (setf (heap-element (tree-heap tree)) element)
     tree))
@@ -56,13 +50,13 @@
     (if left
         (if right
             (if (funcall compare (funcall accessor left) (funcall accessor right))
-                (%make-heap :element left :sub (en (heap-sub self) heap))
-                (%make-heap :element right :sub (en (heap-sub heap) self)))
+                (make-heap :element left :sub (en (heap-sub self) heap))
+                (make-heap :element right :sub (en (heap-sub heap) self)))
             self)
         heap)))
 
 (defmethod %en ((self heap) element (compare function) (accessor function))
-  (merge (%make-heap :element element) self compare accessor))
+  (merge (make-heap :element element) self compare accessor))
 
 (defmethod en ((self tree) element)
   (setf (tree-heap self) (%en (tree-heap self) element (tree-compare self) (tree-accessor self)))
@@ -75,7 +69,7 @@
         (if right
             (merge (merge left right compare accessor) (merge-pairs self compare accessor) compare accessor)
             left)
-        (%make-heap))))
+        (make-heap))))
 
 (defmethod de ((self tree))
   (let ((element (heap-element (tree-heap self))))

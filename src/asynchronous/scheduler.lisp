@@ -15,7 +15,7 @@
                 :cas)
   (:import-from :aria.structure.miso-queue
                 :queue
-                :make-queue
+                :miso-queue
                 :en
                 :de
                 :emptyp)
@@ -29,7 +29,7 @@
 (defclass scheduler ()
   ((thread :initform nil
            :accessor thread)
-   (tasks :initform (make-queue)
+   (tasks :initform (miso-queue)
           :accessor tasks
           :type queue)
    (signum :initform nil

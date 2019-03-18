@@ -16,11 +16,10 @@
                 ::queue-head
                 ::queue-tail
                 ::make-node
-                :make-queue
                 :de
                 :emptyp)
   (:export :queue
-           :make-queue
+           :miso-queue
            :en
            :de
            :emptyp))
@@ -30,6 +29,12 @@
 #|
   this miso queue is designed for Multi-In-Single-Out situation, the operation `de`(means dequeue) is not thread safe due to it should only be excuted in a single thread
 |#
+
+(defstruct (miso-queue (:include queue)))
+
+(defmethod miso-queue ()
+  (let ((dummy (make-node :value nil)))
+    (make-miso-queue :head dummy :tail dummy)))
 
 (defmacro update (place value &key (callback nil))
   (let ((p (gensym "place")))
@@ -41,7 +46,7 @@
             (funcall ,callback))
         ,value))))
 
-(defmethod en ((self queue) e)
+(defmethod en ((self miso-queue) e)
   (declare (optimize speed))
   (let ((node (make-node :value e))
         (head))

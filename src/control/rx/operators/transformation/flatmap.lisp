@@ -4,8 +4,7 @@
   (:use :cl)
   (:use :aria.control.rx.util.operator)
   (:import-from :aria.structure.mimo-queue
-                :queue
-                :make-queue
+                :mimo-queue
                 :en
                 :de
                 :emptyp)
@@ -20,7 +19,7 @@
   (operator self
    (lambda (subscriber)
      (let ((isstop)
-           (buffers (make-queue))
+           (buffers (mimo-queue))
            (caslock (caslock))
            (active 0))
        (observer :onnext

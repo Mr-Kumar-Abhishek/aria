@@ -7,7 +7,6 @@
                 :de
                 :emptyp)
   (:export :queue
-           :make-queue
            :en
            :de
            :emptyp))
@@ -18,13 +17,13 @@
   (prev nil :type (or null node))
   (value nil))
 
-(defstruct (queue (:constructor %make-queue))
+(defstruct queue
   (head nil :type node)
   (tail nil :type node))
 
-(defmethod make-queue ()
+(defmethod queue ()
   (let ((dummy (make-node :value nil)))
-    (%make-queue :head dummy :tail dummy)))
+    (make-queue :head dummy :tail dummy)))
 
 (defmethod en ((self queue) e)
   (declare (optimize speed))

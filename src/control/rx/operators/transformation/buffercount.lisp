@@ -4,7 +4,7 @@
   (:use :cl)
   (:use :aria.control.rx.util.operator)
   (:import-from :aria.structure.ring
-                :make-ring
+                :ring
                 :en
                 :size
                 :tolist)
@@ -18,7 +18,7 @@
     (setf overlap count))
   (operator self
             (lambda (subscriber)
-              (let ((buffer (make-ring count))
+              (let ((buffer (ring count))
                     (size 0)
                     (caslock (caslock))
                     (isover))
