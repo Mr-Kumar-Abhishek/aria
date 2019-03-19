@@ -71,6 +71,7 @@
                                           ((:file "buffer")
                                            (:file "buffercount")
                                            (:file "concatmap" :depends-on ("flatmap"))
+                                           (:file "concatmapto" :depends-on ("flatmap"))
                                            (:file "exhaustmap")
                                            (:file "flatmap")
                                            (:file "mapper")

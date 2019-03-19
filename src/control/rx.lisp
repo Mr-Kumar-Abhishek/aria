@@ -80,6 +80,7 @@
   (:export :buffer
            :buffercount
            :concatmap
+           :concatmapto
            :exhaustmap
            :flatmap
            :mapper

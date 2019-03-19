@@ -5,6 +5,7 @@
   (:use-reexport :aria.control.rx.operators.transformation.buffer)
   (:use-reexport :aria.control.rx.operators.transformation.buffercount)
   (:use-reexport :aria.control.rx.operators.transformation.concatmap)
+  (:use-reexport :aria.control.rx.operators.transformation.concatmapto)
   (:use-reexport :aria.control.rx.operators.transformation.exhaustmap)
   (:use-reexport :aria.control.rx.operators.transformation.flatmap)
   (:use-reexport :aria.control.rx.operators.transformation.mapper)
