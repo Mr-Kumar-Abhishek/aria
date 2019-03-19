@@ -59,6 +59,7 @@
                 :buffer
                 :buffercount
                 :concatmap
+                :concatmapto
                 :exhaustmap
                 :flatmap
                 :mapper
@@ -839,6 +840,14 @@
                                          21 22 23 "inner unsub 20"
                                          31 32 33 "inner unsub 30"
                                          "source unsub")))))
+
+(test concatmapto
+  (let* ((collector)
+         (o (range 0 5)))
+    (subscribe (concatmapto o (of 5 6))
+               (observer :onnext (lambda (x) (push x collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 5 6 5 6 5 6 5 6 5 6 "over")))))
 
 (test exhaustmap
   (let* ((collector)
