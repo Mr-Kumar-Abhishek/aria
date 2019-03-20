@@ -4,6 +4,7 @@
   (:use :cl)
   (:import-from :aria.concurrency.caslock
                 :caslock
+                ::lock
                 :with-caslock)
   (:import-from :aria.control.rx.observable
                 :observable)
@@ -46,10 +47,13 @@
   (make-instance 'inner-subscriber :parent parent))
 
 (defmethod register ((self subscriber) (inner subscriber))
-  (with-caslock (spinlock self)
-    (if (isstop self)
-        (unsubscribe inner)
-        (push inner (inners self))))
+  (let ((innerunsub))
+    (with-caslock (spinlock self)
+      (if (isstop self)
+          (setf innerunsub t)
+          (push inner (inners self))))
+    (if innerunsub
+        (unsubscribe inner)))
   inner)
 
 (defmethod unregister ((self subscriber) (inner subscriber))
