@@ -50,8 +50,6 @@
                 :unsubscribe)
   (:export :subscriber
            ::isstop
-           ::spinlock
-           ::inners
            :observable
            :observer
            :next
