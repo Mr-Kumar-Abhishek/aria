@@ -73,6 +73,7 @@
                                            (:file "concatmap" :depends-on ("flatmap"))
                                            (:file "concatmapto" :depends-on ("flatmap"))
                                            (:file "exhaustmap")
+                                           (:file "expand")
                                            (:file "flatmap")
                                            (:file "mapper")
                                            (:file "mapto")

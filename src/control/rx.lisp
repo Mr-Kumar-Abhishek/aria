@@ -82,6 +82,7 @@
            :concatmap
            :concatmapto
            :exhaustmap
+           :expand
            :flatmap
            :mapper
            :mapto

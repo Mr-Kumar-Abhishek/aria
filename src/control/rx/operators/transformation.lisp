@@ -7,6 +7,7 @@
   (:use-reexport :aria.control.rx.operators.transformation.concatmap)
   (:use-reexport :aria.control.rx.operators.transformation.concatmapto)
   (:use-reexport :aria.control.rx.operators.transformation.exhaustmap)
+  (:use-reexport :aria.control.rx.operators.transformation.expand)
   (:use-reexport :aria.control.rx.operators.transformation.flatmap)
   (:use-reexport :aria.control.rx.operators.transformation.mapper)
   (:use-reexport :aria.control.rx.operators.transformation.mapto)
