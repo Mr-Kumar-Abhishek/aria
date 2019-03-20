@@ -19,12 +19,12 @@
   (operator self
    (lambda (subscriber)
      (let ((isstop)
-           (buffers (mimo-queue))
+           (buffers (queue))
            (caslock (caslock))
            (active 0))
        (observer :onnext
                  (lambda (value)
-                   (flet ((lazysub (value)
+                   (flet ((lazysub ()
                             (lambda ()
                               (within-inner-subscriber
                                (funcall observablefn value)
@@ -49,9 +49,9 @@
                                  (< concurrent 0))
                              (progn (setf immediate t)
                                     (incf active))
-                             (en buffers (lazysub value))))
+                             (en buffers (lazysub))))
                        (if immediate
-                         (funcall (lazysub value))))))
+                         (funcall (lazysub))))))
                  :onfail (on-notifyfail subscriber)
                  :onover (lambda ()
                            (with-caslock caslock
