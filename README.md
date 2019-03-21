@@ -97,6 +97,7 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod buffercount ((self observable) (count integer) &optional (overlap count)))`
 - `(defmethod concatmap ((self observable) (observablefn function)))`
 - `(defmethod exhaustmap ((self observable) (observablefn function)))`
+- `(defmethod expand ((self observable) (observablefn function) &optional (concurrent -1)))`
 - `(defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1)))`
 - `(defmethod mapper ((self observable) (function function)))`
 - `(defmethod mapto ((self observable) value)))`
