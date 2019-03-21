@@ -163,7 +163,16 @@
                            :onfail (lambda (reason) (push reason collector))))
     (is (equal (reverse collector) (list 0 "err")))))
 
-(test observable-error-handler
+(test observable-revolver-error-handler
+  (let ((o (observable (lambda (observer)
+                         (error "fail")
+                         (next observer 0))))
+        (collector))
+    (subscribe o (observer :onnext (lambda (value) (push value collector))
+                           :onfail (lambda (reason) (push (simple-condition-format-control reason) collector))))
+    (is (equal (reverse collector) (list "fail")))))
+
+(test observable-next-error-handler
   (let ((o (observable
             (lambda (observer)
               (next observer 0)
