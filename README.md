@@ -52,7 +52,7 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 #### subscriber
 - `(defmethod next ((self subscriber) value))`
 - `(defmethod fail ((self subscriber) reason))`
-- `(defmethod fail ((self subscriber) reason))`
+- `(defmethod over ((self subscriber)))`
 
 #### subscribe
 - `(defmethod subscribe ((self observable) (observer observer)))`
