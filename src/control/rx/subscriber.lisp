@@ -172,7 +172,8 @@
   subscriber)
 
 (defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
-  (setf (source subscriber) (subscription-pass (funcall (revolver self) subscriber))))
+  (setf (source subscriber) (subscription-pass (handler-case (funcall (revolver self) subscriber)
+                                                 (error (reason) (notifyfail subscriber reason))))))
 
 (defmethod unsubscribe :around ((self subscriber))
   (with-caslock (spinlock self)
