@@ -22,8 +22,8 @@
   (let ((lock (gensym)))
     `(let ((,lock ,caslock))
        (loop while (not (cas (slot-value ,lock 'lock) :free :used)))
-       ,@expr
-       (setf (slot-value ,lock 'lock) :free))))
+       (unwind-protect (progn ,@expr)
+         (setf (slot-value ,lock 'lock) :free)))))
 
 (defmacro with-caslock-once (caslock &rest expr)
   (let ((lock (gensym)))
