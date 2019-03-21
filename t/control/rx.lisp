@@ -61,6 +61,7 @@
                 :concatmap
                 :concatmapto
                 :exhaustmap
+                :expand
                 :flatmap
                 :mapper
                 :mapto
@@ -888,6 +889,82 @@
                                          31 32
                                          "inner unsub 30"
                                          "source unsub")))))
+
+(test expand
+  (let* ((collector)
+         (o (observable (lambda (observer)
+                          (next observer 0)
+                          (over observer)
+                          (lambda ()
+                            (push "source unsub" collector))))))
+    (subscribe (expand o (lambda (value)
+                           (observable (lambda (observer)
+                                         (if (< value 5)
+                                             (next observer (+ value 1)))
+                                         (lambda ()
+                                           (push (format nil "unsub ~A" value) collector))))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 5)))))
+
+(test expand-async-over-by-take
+  (let* ((semaphore (make-semaphore))
+         (th (make-thread (lambda () (dotimes (x 5) (wait-on-semaphore semaphore)))))
+         (timer (gen-timer))
+         (collector)
+         (o (observable (lambda (observer)
+                          (next observer 0)
+                          (lambda ()
+                            (push "source unsub" collector)
+                            (signal-semaphore semaphore))))))
+    (subscribe (take (expand o (lambda (value)
+                                 (observable (lambda (observer)
+                                               (push (format nil "sub ~A" value) collector)
+                                               (settimeout timer (lambda ()
+                                                                   (next observer (+ value 1))))
+                                               (lambda ()
+                                                 (push (format nil "unsub ~A" value) collector)
+                                                 (signal-semaphore semaphore))))))
+                     4)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (join-thread th)
+    (end timer)
+    (is (equal (reverse collector) (list 0 "sub 0" 1 "sub 1" 2 "sub 2" 3 "over" "unsub 0" "unsub 1" "unsub 2" "source unsub" "sub 3" "unsub 3")))))
+
+(test expand-concurrent-0
+  (let* ((collector)
+         (o (of 0)))
+    (subscribe (expand o (lambda (value)
+                           (observable (lambda (observer)
+                                         (if (< value 5)
+                                             (next observer (+ value 1))))))
+                       0)
+               (observer :onnext (lambda (value) (push value collector))))
+    (is (eq (length collector) 0))))
+
+(test expand-concurrent-limit-stuck
+  (let* ((collector)
+         (o (of 0)))
+    (subscribe (expand o (lambda (value)
+                           (observable (lambda (observer)
+                                         (if (< value 5)
+                                             (next observer (+ value 1))))))
+                       1)
+               (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 0)))))
+
+(test expand-concurrent-limit-unstuck
+  (let* ((collector)
+         (o (of 0)))
+    (subscribe (expand o (lambda (value)
+                           (observable (lambda (observer)
+                                         (if (< value 5)
+                                             (next observer (+ value 1)))
+                                         (over observer))))
+                       1)
+               (observer :onnext (lambda (value) (push value collector))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 5)))))
 
 (test flatmap
   (let* ((collector)
