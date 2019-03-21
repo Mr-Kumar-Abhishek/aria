@@ -34,14 +34,16 @@
                                            :onfail (onfail subscriber)
                                            :onover
                                            (lambda ()
-                                             (let ((buffer))
+                                             (notifyover inner)
+                                             (let ((needover)
+                                                   (buffer))
                                                (with-caslock caslock
-                                                 (notifyover inner)
                                                  (if (and isstop (emptyp buffers) (<= active 1))
-                                                     (notifyover subscriber))
+                                                     (setf needover t))
                                                  (if (emptyp buffers)
                                                      (decf active)
                                                      (setf buffer (de buffers))))
+                                               (if needover (notifyover subscriber))
                                                (if buffer (funcall buffer))))))))))
                      (let ((immediate))
                        (with-caslock caslock
@@ -54,7 +56,9 @@
                          (funcall (lazysub))))))
                  :onfail (on-notifyfail subscriber)
                  :onover (lambda ()
-                           (with-caslock caslock
-                             (setf isstop t)
-                             (if (and (emptyp buffers) (eq active 0))
-                                 (notifyover subscriber)))))))))
+                           (let ((needover))
+                             (with-caslock caslock
+                               (setf isstop t)
+                               (if (and (emptyp buffers) (eq active 0))
+                                   (setf needover t)))
+                             (if needover (notifyover subscriber)))))))))
