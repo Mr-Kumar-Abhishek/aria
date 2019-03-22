@@ -22,10 +22,9 @@
                                   (funcall (gethash key nexts) value)
                                   (progn (setf ob
                                                (observable (lambda (observer)
-                                                             (format t "~%next first ~A" value)
                                                              (next observer value)                                 
                                                              (with-caslock caslock
-                                                               (setf (gethash key nexts) (lambda (value) (format t "~%next ~A" value) (next observer value)))
+                                                               (setf (gethash key nexts) (lambda (value) (next observer value)))
                                                                (setf (gethash key overs) (lambda () (over observer)))))))
                                          (setf (gethash key obs) ob)
                                          (notifynext subscriber ob)))))
