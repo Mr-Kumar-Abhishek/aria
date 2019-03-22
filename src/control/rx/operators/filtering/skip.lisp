@@ -14,9 +14,11 @@
                     (caslock (caslock)))
                 (observer :onnext
                           (lambda (value)
-                            (with-caslock caslock
-                              (if (< count integer)
-                                  (incf count)
-                                  (notifynext subscriber value))))
+                            (let ((neednext))
+                              (with-caslock caslock
+                                (if (< count integer)
+                                    (incf count)
+                                    (setf neednext t)))
+                              (if neednext (notifynext subscriber value))))
                           :onfail (on-notifyfail subscriber)
                           :onover (on-notifyover subscriber))))))

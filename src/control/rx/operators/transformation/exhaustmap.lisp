@@ -25,15 +25,19 @@
                                            :onfail (onfail subscriber)
                                            :onover
                                            (lambda ()
-                                             (with-caslock caslock
-                                               (if isstop
-                                                   (notifyover subscriber))
-                                               (notifyover inner)
-                                               (setf active nil))))))))
+                                             (let ((needover))
+                                               (with-caslock caslock
+                                                 (if isstop
+                                                     (setf needover t))
+                                                 (setf active nil))
+                                               (if needover (notifyover subscriber))
+                                               (notifyover inner))))))))
                           :onfail (on-notifyfail subscriber)
                           :onover
                           (lambda ()
-                            (with-caslock caslock
-                              (setf isstop t)
-                              (unless active
-                                (notifyover subscriber)))))))))
+                            (let ((needover))
+                              (with-caslock caslock
+                                (setf isstop t)
+                                (unless active
+                                  (setf needover t)))
+                              (if needover (notifyover subscriber)))))))))

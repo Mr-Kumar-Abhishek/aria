@@ -29,13 +29,15 @@
                                              :onfail (onfail subscriber)
                                              :onover
                                              (lambda ()
-                                               (with-caslock caslock
-                                                 (notifyover inner)
-                                                 (if isstop (notifyover subscriber))))))))))
+                                               (notifyover inner)
+                                               (let ((needover))
+                                                 (with-caslock caslock
+                                                   (if isstop (setf needover t)))
+                                                 (if needover (notifyover subscriber))))))))))
                  :onfail (lambda (reason)
                            (notifyfail subscriber reason))
                  :onover (lambda ()
                            (with-caslock caslock
-                             (setf isstop t)
-                             (if (isstop prev)
-                                 (notifyover subscriber)))))))))
+                             (setf isstop t))
+                           (if (isstop prev)
+                               (notifyover subscriber))))))))

@@ -33,9 +33,9 @@
                                   (unless (< size count)
                                     (setf needsend t)
                                     (setf send (tolist buffer))
-                                    (decf size overlap))
-                                  (if needsend
-                                      (notifynext subscriber send))))))
+                                    (decf size overlap))))
+                              (if needsend
+                                  (notifynext subscriber send))))
                           :onfail (on-notifyfail subscriber)
                           :onover (lambda ()
                                     (with-caslock caslock

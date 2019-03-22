@@ -19,15 +19,19 @@
                 (observer :onnext
                           (lambda (value)
                             (if (funcall predicate value)
-                                (with-caslock caslock
-                                  (if (> count 0)
-                                      (fail subscriber "observable emits duplicated matched value")
-                                      (progn (incf count)
-                                             (setf result value))))))
+                                (let ((needfail))
+                                  (with-caslock caslock
+                                    (if (> count 0)
+                                        (setf needfail t)
+                                        (progn (incf count)
+                                               (setf result value))))
+                                  (if needfail (fail subscriber "observable emits duplicated matched value")))))
                           :onfail (on-notifyfail subscriber)
                           :onover
                           (lambda ()
-                            (with-caslock caslock
-                              (if (eq count 1)
-                                  (notifynext subscriber result)))
+                            (let ((neednext))
+                              (with-caslock caslock
+                                (if (eq count 1)
+                                    (setf neednext t)))
+                              (if neednext (notifynext subscriber result)))
                             (notifyover subscriber)))))))
