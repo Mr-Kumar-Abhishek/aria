@@ -907,6 +907,14 @@
                          :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list 0 1 2 3 4 5)))))
 
+(test expand-over-by-take
+  (let* ((collector)
+         (o (of 0)))
+    (subscribe (take (expand o (lambda (value) (of (+ value 1)))) 5)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 "over")))))
+
 (test expand-async-over-by-take
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 5) (wait-on-semaphore semaphore)))))
