@@ -142,7 +142,6 @@
   nil)
 
 (defmethod notifyover :around ((self subscriber))
-  (format t "~%notifyover ~A" self)
   (unless (or (isclose self) (isstop self))
     (with-caslock-once (notifylock self)
       (setf (isclose self) t)
@@ -169,8 +168,6 @@
 (defmethod subscribe-subscriber :around ((self observable) (subscriber subscriber))
   (call-next-method)
   (if (isstop subscriber)
-      (format t "~%check unsub ~A" subscriber))
-  (if (isstop subscriber)
       (unsubscribe subscriber))
   subscriber)
 
@@ -186,7 +183,6 @@
   self)
 
 (defmethod unsubscribe ((self subscriber))
-  (format t "~%unsub ~A source ~A" self (source self))
   (unsubscribe (source self)))
 
 (defmethod unsubscribe ((self null))

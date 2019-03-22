@@ -73,7 +73,7 @@
 (defmethod operator ((self observable) (pass function))
   (observable (lambda (observer)
                 (let ((subscriber (outer-subscriber observer)))
-                  (connect subscriber (funcall pass subscriber)) (format t "~%sub ~A" subscriber)
+                  (connect subscriber (funcall pass subscriber))
                   (subscribe-subscriber self subscriber)
                   (lambda ()
                     (unsubscribe subscriber))))))

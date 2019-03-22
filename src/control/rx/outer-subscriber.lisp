@@ -57,7 +57,6 @@
   (fail (destination self) reason))
 
 (defmethod notifyover ((self outer-subscriber))
-  (format t "~%over ~A destination ~A" self (destination self))
   (over (destination self)))
 
 (defmethod before ((self outer-subscriber) (supplier function))
@@ -67,15 +66,12 @@
   (setf (onafter self) supplier))
 
 (defmethod outer-subscriber ((self observer))
-  (format t "~%outer~A" self)
   (make-instance 'outer-subscriber :destination self))
 
 (defmethod outer-subscriber ((self subscriber))
-  (format t "~%outer~A" self)
   (make-instance 'outer-subscriber :destination self))
 
 (defmethod outer-subscriber ((self outer-subscriber))
-  (format t "~%outer~A" self)
   (let ((subscriber (make-instance 'outer-subscriber :destination self)))
     (setf (parent self) subscriber)
     subscriber))
@@ -90,7 +86,6 @@
     (connect subscriber (observer :onnext (on-notifynext subscriber)
                                   :onfail (on-notifyfail subscriber)
                                   :onover (on-notifyover subscriber)))
-    (format t "~%source sub ~A" subscriber)
     (subscribe-subscriber self subscriber)
     subscriber))
 
@@ -98,7 +93,6 @@
   (subscribe self (observer :onnext onnext)))
 
 (defmethod unsubscribe ((self outer-subscriber))
-  (format t "~%unsub parent ~A from ~A" (parent self) self)
   (let ((parent (parent self)))
     (setf (parent self) nil)
     (unsubscribe parent))
