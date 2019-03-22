@@ -46,7 +46,7 @@
 (defmethod inner-subscriber ((parent subscriber))
   (make-instance 'inner-subscriber :parent parent))
 
-(defmethod register ((self subscriber) (inner subscriber))
+(defmethod register ((self subscriber) (inner inner-subscriber))
   (let ((innerunsub))
     (with-caslock (spinlock self)
       (if (isstop self)
@@ -56,7 +56,7 @@
         (unsubscribe inner)))
   inner)
 
-(defmethod unregister ((self subscriber) (inner subscriber))
+(defmethod unregister ((self subscriber) (inner inner-subscriber))
   (with-caslock (spinlock self)
     (unless (isstop self)
       (setf (inners self) (remove inner (inners self)))))

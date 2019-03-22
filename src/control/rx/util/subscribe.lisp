@@ -2,10 +2,12 @@
 
 (defpackage aria.control.rx.util.subscribe
   (:use :cl)
-  (:import-from :aria.control.rx.inner-subscriber
+  #|(:import-from :aria.control.rx.inner-subscriber
                 :unsubscribe)
+  |#
   (:import-from :aria.control.rx.outer-subscriber
-                :subscribe)
+                :subscribe
+                :unsubscribe)
   (:import-from :aria.control.rx.subject
                 :subscribe)
   (:import-from :aria.control.rx.subscriber

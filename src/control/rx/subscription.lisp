@@ -44,6 +44,7 @@
 
 (defmethod unsubscribe ((self subscription))
   (with-caslock-once (lock self)
+    (format t "~%subscription unsub~A" self)
     (setf (isunsubscribed self) t)
     (safe-funcall (onunsubscribe self)))
   nil)

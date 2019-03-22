@@ -23,7 +23,8 @@
                 :on-notifyfail
                 :on-notifyover
                 :connect
-                :subscribe-subscriber)
+                :subscribe-subscriber
+                :unsubscribe)
   (:export :outer-subscriber
            :notifynext
            :notifyfail
@@ -44,7 +45,10 @@
              :type function)
    (onafter :initform #'empty-function
             :accessor onafter
-            :type function)))
+            :type function)
+   (parent :initform nil
+           :accessor parent
+           :type (or null outer-subscriber))))
 
 (defmethod notifynext ((self outer-subscriber) value)
   (next (destination self) value))
@@ -53,6 +57,7 @@
   (fail (destination self) reason))
 
 (defmethod notifyover ((self outer-subscriber))
+  (format t "~%over ~A destination ~A" self (destination self))
   (over (destination self)))
 
 (defmethod before ((self outer-subscriber) (supplier function))
@@ -62,10 +67,18 @@
   (setf (onafter self) supplier))
 
 (defmethod outer-subscriber ((self observer))
+  (format t "~%outer~A" self)
   (make-instance 'outer-subscriber :destination self))
 
 (defmethod outer-subscriber ((self subscriber))
+  (format t "~%outer~A" self)
   (make-instance 'outer-subscriber :destination self))
+
+(defmethod outer-subscriber ((self outer-subscriber))
+  (format t "~%outer~A" self)
+  (let ((subscriber (make-instance 'outer-subscriber :destination self)))
+    (setf (parent self) subscriber)
+    subscriber))
 
 (defmethod subscribe-subscriber ((self observable) (subscriber outer-subscriber))
   (safe-funcall (onbefore subscriber))
@@ -77,8 +90,16 @@
     (connect subscriber (observer :onnext (on-notifynext subscriber)
                                   :onfail (on-notifyfail subscriber)
                                   :onover (on-notifyover subscriber)))
+    (format t "~%source sub ~A" subscriber)
     (subscribe-subscriber self subscriber)
     subscriber))
 
 (defmethod subscribe ((self observable) (onnext function))
   (subscribe self (observer :onnext onnext)))
+
+(defmethod unsubscribe ((self outer-subscriber))
+  (format t "~%unsub parent ~A from ~A" (parent self) self)
+  (let ((parent (parent self)))
+    (setf (parent self) nil)
+    (unsubscribe parent))
+  (call-next-method))
