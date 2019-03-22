@@ -818,6 +818,15 @@
                                          '(10)
                                          "over")))))
 
+(test buffercount-lack
+  (let* ((collector)
+         (o (of 0 1 2 3)))
+    (subscribe (buffercount o 5)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list '(0 1 2 3)
+                                         "over")))))
+
 (test concatmap
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore)))))
