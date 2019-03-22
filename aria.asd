@@ -75,6 +75,7 @@
                                            (:file "exhaustmap")
                                            (:file "expand")
                                            (:file "flatmap")
+                                           (:file "groupby")
                                            (:file "mapper")
                                            (:file "mapto")
                                            (:file "switchmap")))))))))

@@ -9,6 +9,7 @@
   (:use-reexport :aria.control.rx.operators.transformation.exhaustmap)
   (:use-reexport :aria.control.rx.operators.transformation.expand)
   (:use-reexport :aria.control.rx.operators.transformation.flatmap)
+  (:use-reexport :aria.control.rx.operators.transformation.groupby)
   (:use-reexport :aria.control.rx.operators.transformation.mapper)
   (:use-reexport :aria.control.rx.operators.transformation.mapto)
   (:use-reexport :aria.control.rx.operators.transformation.switchmap))

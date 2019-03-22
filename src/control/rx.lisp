@@ -84,6 +84,7 @@
            :exhaustmap
            :expand
            :flatmap
+           :groupby
            :mapper
            :mapto
            :switchmap))
