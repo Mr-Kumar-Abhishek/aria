@@ -13,7 +13,10 @@
 (in-package :aria.control.rx.operators.transformation.buffercount)
 
 (defmethod buffercount ((self observable) (count integer) &optional (overlap count))
-  "overlap will be set to count when <= 0"
+  "count will be set to 0 when < 0
+   overlap will be set to count when <= 0"
+  (unless (>= count 0)
+    (setf count 0))
   (unless (> overlap 0)
     (setf overlap count))
   (operator self
