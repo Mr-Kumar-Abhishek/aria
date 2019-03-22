@@ -63,6 +63,7 @@
                 :exhaustmap
                 :expand
                 :flatmap
+                :groupby
                 :mapper
                 :mapto
                 :switchmap))
@@ -1185,6 +1186,19 @@
     (is (equal (reverse collector) (list 11 12 "inner unsub 10"
                                          21 22 "inner unsub 20"
                                          31 32 "inner unsub 30")))))
+
+(test groupby
+  (let* ((collector)
+         (o (range 0 9)))
+    (subscribe (with-pipe o
+                 (groupby (lambda (value) (mod value 3)))
+                 (flatmap (lambda (val) (buffercount val 3))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list '(0 3 6)
+                                         '(1 4 7)
+                                         '(2 5 8)
+                                         "over")))))
 
 (test mapper
   (let ((o (observable
