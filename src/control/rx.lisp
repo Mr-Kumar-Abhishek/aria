@@ -87,6 +87,8 @@
            :groupby
            :mapper
            :mapto
+           :reducer
+           :scan
            :switchmap))
 
 (in-package :aria.control.rx)

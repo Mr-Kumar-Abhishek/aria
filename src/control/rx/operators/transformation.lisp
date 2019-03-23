@@ -12,6 +12,8 @@
   (:use-reexport :aria.control.rx.operators.transformation.groupby)
   (:use-reexport :aria.control.rx.operators.transformation.mapper)
   (:use-reexport :aria.control.rx.operators.transformation.mapto)
+  (:use-reexport :aria.control.rx.operators.transformation.reducer)
+  (:use-reexport :aria.control.rx.operators.transformation.scan)
   (:use-reexport :aria.control.rx.operators.transformation.switchmap))
 
 (in-package :aria.control.rx.operators.transformation)

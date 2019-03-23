@@ -78,6 +78,8 @@
                                            (:file "groupby")
                                            (:file "mapper")
                                            (:file "mapto")
+                                           (:file "reducer")
+                                           (:file "scan")
                                            (:file "switchmap")))))))))
    (:module "structure"
             :components
