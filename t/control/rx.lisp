@@ -66,6 +66,8 @@
                 :groupby
                 :mapper
                 :mapto
+                :reducer
+                :scan
                 :switchmap))
 
 (in-package :aria-test.control.rx)
@@ -1215,6 +1217,22 @@
         (collector))
     (subscribe (mapto o 100) (lambda (value) (push value collector)))
     (is (equal (reverse collector) (list 100 100 100 100 100 100 100 100 100 100)))))
+
+(test reducer
+  (let ((collector)
+        (o (range 0 100)))
+    (subscribe (reducer o (lambda (acc cur) (+ acc cur)) 0)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 4950 "over")))))
+
+(test scan
+  (let ((collector)
+        (o (range 0 5)))
+    (subscribe (scan o (lambda (acc cur) (+ acc cur)) 0)
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 1 3 6 10 "over")))))
 
 (test switchmap
   (let* ((collector)
