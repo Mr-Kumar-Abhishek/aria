@@ -96,11 +96,15 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod buffer ((self observable) (notifier observable)))`
 - `(defmethod buffercount ((self observable) (count integer) &optional (overlap count)))`
 - `(defmethod concatmap ((self observable) (observablefn function)))`
+- `(defmethod concatmapto ((self observable) (observable observable)))`
 - `(defmethod exhaustmap ((self observable) (observablefn function)))`
 - `(defmethod expand ((self observable) (observablefn function) &optional (concurrent -1)))`
 - `(defmethod flatmap ((self observable) (observablefn function) &optional (concurrent -1)))`
+- `(defmethod groupby ((self observable) (keyselector function)))`
 - `(defmethod mapper ((self observable) (function function)))`
 - `(defmethod mapto ((self observable) value)))`
+- `(defmethod reducer ((self observable) (function function) initial-value))`
+- `(defmethod scan ((self observable) (function function) initial-value))`
 - `(defmethod switchmap ((self observable) (observablefn function)))`
 
 ## aria.structure.queue
