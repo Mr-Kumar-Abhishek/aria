@@ -10,34 +10,36 @@
 (defmethod switchmap ((self observable) (observablefn function))
   "switchmap will hold the last subscription from last call of observablefn"
   (operator self
-   (lambda (subscriber)
-     (let ((prev)
-           (isstop)
-           (caslock (caslock)))
-       (observer :onnext
-                 (lambda (value)
-                   (unless isstop
-                     (if prev
-                         (unsubscribe prev))
-                     (setf prev (within-inner-subscriber
-                                 (funcall observablefn value)
-                                 subscriber
-                                 (lambda (inner)
-                                   (observer :onnext
-                                             (lambda (value)
-                                               (notifynext subscriber value))
-                                             :onfail (onfail subscriber)
-                                             :onover
-                                             (lambda ()
-                                               (notifyover inner)
-                                               (let ((needover))
-                                                 (with-caslock caslock
-                                                   (if isstop (setf needover t)))
-                                                 (if needover (notifyover subscriber))))))))))
-                 :onfail (lambda (reason)
-                           (notifyfail subscriber reason))
-                 :onover (lambda ()
-                           (with-caslock caslock
-                             (setf isstop t))
-                           (if (isstop prev)
-                               (notifyover subscriber))))))))
+            (lambda (subscriber)
+              (let ((prev)
+                    (prevlock (caslock))
+                    (isstop)
+                    (caslock (caslock)))
+                (observer :onnext
+                          (lambda (value)
+                            (unless isstop
+                              (within-inner-subscriber
+                               (funcall observablefn value)
+                               subscriber
+                               (lambda (inner)
+                                 (with-caslock prevlock
+                                   (unsubscribe prev)
+                                   (setf prev inner))
+                                 (observer :onnext
+                                           (lambda (value)
+                                             (notifynext subscriber value))
+                                           :onfail (onfail subscriber)
+                                           :onover
+                                           (lambda ()
+                                             (notifyover inner)
+                                             (let ((needover))
+                                               (with-caslock caslock
+                                                 (if isstop (setf needover t)))
+                                               (if needover (notifyover subscriber)))))))))
+                          :onfail (lambda (reason)
+                                    (notifyfail subscriber reason))
+                          :onover (lambda ()
+                                    (with-caslock caslock
+                                      (setf isstop t))
+                                    (if (isstop prev)
+                                        (notifyover subscriber))))))))

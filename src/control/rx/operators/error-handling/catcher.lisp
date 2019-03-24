@@ -10,18 +10,19 @@
 (defmethod catcher ((self observable) (observablefn function))
   (operator self
             (lambda (subscriber)
-              (let ((prev))
+              (let ((prev)
+                    (caslock (caslock)))
                 (observer :onnext (on-notifynext subscriber)
                           :onfail
                           (lambda (reason)
-                            (if prev
-                                (unsubscribe prev))
-                            (setf prev (within-inner-subscriber
-                                        (funcall observablefn reason)
-                                        subscriber
-                                        (lambda (inner)
-                                          (declare (ignorable inner))
-                                          (observer :onnext (on-notifynext subscriber)
-                                                    :onfail (on-notifyfail subscriber)
-                                                    :onover (on-notifyover subscriber))))))
+                            (within-inner-subscriber
+                             (funcall observablefn reason)
+                             subscriber
+                             (lambda (inner)
+                               (with-caslock caslock
+                                 (unsubscribe prev)
+                                 (setf prev inner))
+                               (observer :onnext (on-notifynext subscriber)
+                                         :onfail (on-notifyfail subscriber)
+                                         :onover (on-notifyover subscriber)))))
                           :onover (on-notifyover subscriber))))))

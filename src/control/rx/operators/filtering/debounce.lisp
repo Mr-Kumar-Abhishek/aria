@@ -11,21 +11,23 @@
   "observablefn needs receive a value and return a observable"
   (operator self
             (lambda (subscriber)
-              (let ((prev))
+              (let ((prev)
+                    (caslock (caslock)))
                 (observer :onnext
                           (lambda (value)
-                            (unsubscribe prev)
-                            (setf prev
-                                  (within-inner-subscriber
-                                   (funcall observablefn value)
-                                   subscriber
-                                   (lambda (inner)
-                                     (observer :onnext
-                                               (lambda (x)
-                                                 (declare (ignorable x))
-                                                 (notifynext subscriber value)
-                                                 (unsubscribe inner))
-                                               :onfail (onfail subscriber)
-                                               :onfail (on-notifyover inner))))))
+                            (within-inner-subscriber
+                             (funcall observablefn value)
+                             subscriber
+                             (lambda (inner)
+                               (with-caslock caslock
+                                 (unsubscribe prev)
+                                 (setf prev inner))
+                               (observer :onnext
+                                         (lambda (x)
+                                           (declare (ignorable x))
+                                           (notifynext subscriber value)
+                                           (unsubscribe inner))
+                                         :onfail (onfail subscriber)
+                                         :onfail (on-notifyover inner)))))
                           :onfail (on-notifyfail subscriber)
                           :onover (on-notifyover subscriber))))))
