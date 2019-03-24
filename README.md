@@ -76,6 +76,7 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod thrown (reason))`
 
 #### error-handling
+- `(defmethod catcher ((self observable) (observablefn function)))`
 - `(defmethod retry ((self observable) (number integer)))`
 - `(defmethod retryuntil ((self observable) (predicate function)))`
 - `(defmethod retrywhen ((self observable) (notifier observable)))`
