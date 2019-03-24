@@ -61,7 +61,8 @@
            :empty
            :thrown)
   ;; error-handling operators
-  (:export :retry
+  (:export :catcher
+           :retry
            :retryuntil
            :retrywhen)
   ;; filtering operators
