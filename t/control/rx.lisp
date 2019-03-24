@@ -39,6 +39,7 @@
                 :thrown)
   ;; error-handling operators
   (:import-from :aria.control.rx
+                :catcher
                 :retry
                 :retryuntil
                 :retrywhen)
@@ -284,6 +285,24 @@
     (is (isunsubscribed subscriber))))
 
 ;; error-handling operators
+(test catcher
+  (let* ((collector)
+         (o (observable
+             (lambda (observer)
+               (next observer 0)
+               (fail observer 1)
+               (fail observer 2)
+               (fail observer 3)))))
+    (subscribe (catcher o (lambda (value)
+                            (observable
+                             (lambda (observer)
+                               (next observer value)
+                               (lambda ()
+                                 (push (format nil "unsub ~A" value) collector))))))
+               (observer :onnext (lambda (value) (push (format nil "next ~A" value) collector))
+                         :onfail (lambda (reason) (push (format nil "fail ~A" reason) collector))))
+    (is (equal (reverse collector) (list "next 0" "next 1" "unsub 1" "next 2" "unsub 2" "next 3")))))
+
 (test retry
   (let* ((count 0)
          (collector)
