@@ -3,7 +3,7 @@
 (defpackage aria.control.rx.outer-subscriber
   (:use :cl)
   (:import-from :aria.control.rx.common
-                :empty-function
+                :noop
                 :safe-funcall)
   (:import-from :aria.control.rx.interface
                 :subscribe)
@@ -40,10 +40,10 @@
   ((destination :initarg :destination
                 :accessor destination
                 :type (or subscriber observer))
-   (onbefore :initform #'empty-function
+   (onbefore :initform #'noop
              :accessor onbefore
              :type function)
-   (onafter :initform #'empty-function
+   (onafter :initform #'noop
             :accessor onafter
             :type function)
    (parent :initform nil

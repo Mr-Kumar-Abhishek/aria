@@ -6,7 +6,7 @@
                 :caslock
                 :with-caslock-once)
   (:import-from :aria.control.rx.common
-                :empty-function
+                :noop
                 :safe-funcall
                 :once)
   (:export :subscription
@@ -37,7 +37,7 @@
 
 (defmethod subscription-pass (self)
   (declare (ignorable self))
-  (make-instance 'subscription :onunsubscribe #'empty-function))
+  (make-instance 'subscription :onunsubscribe #'noop))
 
 (defmethod subscription-pass ((self function))
   (make-instance 'subscription :onunsubscribe (once self)))

@@ -3,7 +3,8 @@
 (defpackage aria.control.rx.observer
   (:use :cl)
   (:import-from :aria.control.rx.common
-                :empty-function)
+                :noop
+                :safe-funcall)
   (:export :observer
            :observerp
            :nexr
@@ -27,7 +28,7 @@
            :type function)))
 
 (defmethod observer (&key onnext onfail onover)
-  (make-instance 'observer :onnext (or onnext #'empty-function) :onfail (or onfail #'empty-function) :onover (or onover #'empty-function)))
+  (make-instance 'observer :onnext (or onnext #'noop) :onfail (or onfail #'noop) :onover (or onover #'noop)))
 
 (defmethod observerp ((self observer))
   (declare (ignorable self))
@@ -38,13 +39,13 @@
   nil)
 
 (defmethod next ((self observer) value)
-  (funcall (onnext self) value)
+  (safe-funcall (onnext self) value)
   nil)
 
 (defmethod fail ((self observer) reason)
-  (funcall (onfail self) reason)
+  (safe-funcall (onfail self) reason)
   nil)
 
 (defmethod over ((self observer))
-  (funcall (onover self))
+  (safe-funcall (onover self))
   nil)

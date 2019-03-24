@@ -5,7 +5,7 @@
   (:import-from :aria.concurrency.caslock
                 :caslock
                 :with-caslock-once)
-  (:export :empty-function
+  (:export :noop
            :safe-funcall
            :id
            :tautology
@@ -13,11 +13,11 @@
 
 (in-package :aria.control.rx.common)
 
-(defmethod empty-function (&rest rest)
+(defmethod noop (&rest rest)
   (declare (ignorable rest)))
 
 (defmethod safe-funcall ((function function) &rest rest)
-  (unless (eq function #'empty-function)
+  (unless (eq function #'noop)
     (apply function rest)))
 
 (defmethod id (&optional x) x)
