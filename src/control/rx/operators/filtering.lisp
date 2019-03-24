@@ -4,7 +4,6 @@
   (:use :cl)
   (:use-reexport :aria.control.rx.operators.filtering.debounce)
   (:use-reexport :aria.control.rx.operators.filtering.distinct)
-  (:use-reexport :aria.control.rx.operators.filtering.each)
   (:use-reexport :aria.control.rx.operators.filtering.filter)
   (:use-reexport :aria.control.rx.operators.filtering.head)
   (:use-reexport :aria.control.rx.operators.filtering.ignores)
@@ -15,6 +14,9 @@
   (:use-reexport :aria.control.rx.operators.filtering.skipwhile)
   (:use-reexport :aria.control.rx.operators.filtering.tail)
   (:use-reexport :aria.control.rx.operators.filtering.take)
+  (:use-reexport :aria.control.rx.operators.filtering.tap)
+  (:use-reexport :aria.control.rx.operators.filtering.tapnext)
+  (:use-reexport :aria.control.rx.operators.filtering.tapover)
   (:use-reexport :aria.control.rx.operators.filtering.throttle)
   (:use-reexport :aria.control.rx.operators.filtering.throttletime))
 

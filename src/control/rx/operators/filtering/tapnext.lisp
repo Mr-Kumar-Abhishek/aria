@@ -1,13 +1,13 @@
 (in-package :cl-user)
 
-(defpackage aria.control.rx.operators.filtering.each
+(defpackage aria.control.rx.operators.filtering.tapnext
   (:use :cl)
   (:use :aria.control.rx.util.operator)
-  (:export :each))
+  (:export :tapnext))
 
-(in-package :aria.control.rx.operators.filtering.each)
+(in-package :aria.control.rx.operators.filtering.tapnext)
 
-(defmethod each ((self observable) (consumer function))
+(defmethod tapnext ((self observable) (consumer function))
   (operator self
             (lambda (subscriber)
               (observer :onnext (lambda (value)

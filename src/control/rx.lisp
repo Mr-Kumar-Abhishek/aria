@@ -60,10 +60,14 @@
            :range
            :empty
            :thrown)
+  ;; error-handling operators
+  (:export :retry
+           :retryuntil
+           :retrywhen
+           :tapfail)
   ;; filtering operators
   (:export :distinct
            :debounce
-           :each
            :filter
            :head
            :ignores
@@ -74,6 +78,9 @@
            :skipwhile
            :tail
            :take
+           :tap
+           :tapnext
+           :tapover
            :throttle
            :throttletime)
   ;;transformation operators

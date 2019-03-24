@@ -45,13 +45,20 @@
                                            (:file "of")
                                            (:file "range")
                                            (:file "thrown")))
+                                 (:file "error-handling" :depends-on ("error-handling-module"))
+                                 (:module "error-handling-module"
+                                          :pathname "error-handling"
+                                          :components
+                                          ((:file "retry" :depends-on ("retryuntil"))
+                                           (:file "retryuntil")
+                                           (:file "retrywhen" :depends-on ("retryuntil"))
+                                           (:file "tapfail")))
                                  (:file "filtering" :depends-on ("filtering-module"))
                                  (:module "filtering-module"
                                           :pathname "filtering"
                                           :components
                                           ((:file "debounce")
                                            (:file "distinct")
-                                           (:file "each")
                                            (:file "filter")
                                            (:file "head")
                                            (:file "ignores")
@@ -62,6 +69,9 @@
                                            (:file "skipwhile")
                                            (:file "tail")
                                            (:file "take")
+                                           (:file "tap" :depends-on ("tapnext"))
+                                           (:file "tapnext")
+                                           (:file "tapover")
                                            (:file "throttle")
                                            (:file "throttletime")))
                                  (:file "transformation" :depends-on ("transformation-module"))
