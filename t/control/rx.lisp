@@ -37,11 +37,16 @@
                 :range
                 :empty
                 :thrown)
+  ;; error-handling operators
+  (:import-from :aria.control.rx
+                :retry
+                :retryuntil
+                :retrywhen
+                :tapfail)
   ;; filtering operators
   (:import-from :aria.control.rx
                 :distinct
                 :debounce
-                :each
                 :filter
                 :head
                 :ignores
@@ -52,6 +57,9 @@
                 :skipwhile
                 :tail
                 :take
+                :tap
+                :tapnext
+                :tapover
                 :throttle
                 :throttletime)
   ;; transformation operators
@@ -275,6 +283,94 @@
     (is (equal (reverse collector) (list "fail")))
     (is (isunsubscribed subscriber))))
 
+;; error-handling operators
+(test retry
+  (let* ((count 0)
+         (collector)
+         (o (observable
+             (lambda (observer)
+               (let ((copy count))
+                 (incf count)
+                 (push (format nil "sub ~A" copy) collector)
+                 (fail observer copy)
+                 (lambda ()
+                   (push (format nil "unsub ~A" copy) collector)))))))
+    (subscribe (with-pipe o
+                 (tapfail (lambda (reason) (push reason collector)))
+                 (retry 2))
+               (observer :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "sub 0" 0
+                                         "sub 1" 1
+                                         "sub 2" 2
+                                         2
+                                         "unsub 2"
+                                         "unsub 1"
+                                         "unsub 0")))))
+(test retryuntil
+  (let* ((count 0)
+         (collector)
+         (o (observable
+             (lambda (observer)
+               (let ((copy count))
+                 (incf count)
+                 (push (format nil "sub ~A" copy) collector)
+                 (fail observer copy)
+                 (lambda ()
+                   (push (format nil "unsub ~A" copy) collector)))))))
+    (subscribe (with-pipe o
+                 (tapfail (lambda (reason) (push reason collector)))
+                 (retryuntil (lambda (val) (>= val 2))))
+               (observer :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "sub 0" 0
+                                         "sub 1" 1
+                                         "sub 2" 2
+                                         2
+                                         "unsub 2"
+                                         "unsub 1"
+                                         "unsub 0")))))
+
+(test retrywhen
+  (let* ((count 0)
+         (collector)
+         (event)
+         (notifier (observable
+                    (lambda (observer)
+                      (setf event (lambda ()
+                                    (unless (< count 2)
+                                      (next observer nil))
+                                    (incf count)))
+                      (lambda ()
+                        (push "unsub notifier" collector)))))
+         (o (observable
+             (lambda (observer)
+               (let ((copy count))
+                 (funcall event)
+                 (push (format nil "sub ~A" copy) collector)
+                 (fail observer copy)
+                 (lambda ()
+                   (push (format nil "unsub ~A" copy) collector)))))))
+    (subscribe (with-pipe o
+                 (tapfail (lambda (reason) (push reason collector)))
+                 (retrywhen notifier))
+               (observer :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "sub 0" 0
+                                         "sub 1" 1
+                                         "sub 2" 2
+                                         2
+                                         "unsub notifier"
+                                         "unsub 2"
+                                         "unsub 1"
+                                         "unsub 0")))))
+
+(test tapfail
+  (let ((o (thrown "fail"))
+        (collector0)
+        (collector1))
+    (subscribe (tapfail o (lambda (reason) (push (format nil "tap~A" reason) collector0)))
+               (observer :onfail (lambda (reason) (push reason collector1))))
+    (is (equal (reverse collector0) (list "tapfail")))
+    (is (equal (reverse collector1) (list "fail")))))
+
 ;; filtering operators
 
 (test debounce
@@ -324,16 +420,6 @@
     (subscribe (distinct o (lambda (x y) (eq (funcall x) (funcall y))))
                (lambda (value) (push value collector)))
     (is (equal (map 'list (lambda (supplier) (funcall supplier)) (reverse collector)) (list 0 2 0 2)))))
-
-(test each
-  (let ((o (observable
-            (lambda (observer)
-              (dotimes (x 10) (next observer x)))))
-        (collector0)
-        (collector1))
-    (subscribe (each o (lambda (x) (push (* 2 x) collector0) 100)) (lambda (value) (push value collector1)))
-    (is (equal (reverse collector0) (list 0 2 4 6 8 10 12 14 16 18)))
-    (is (equal (reverse collector1) (list 0 1 2 3 4 5 6 7 8 9)))))
 
 (test filter
   (let ((o (observable
@@ -647,6 +733,54 @@
                          :onover (lambda () (push "over" collector))))
     (join-thread th)
     (is (equal (reverse collector) (list 0 1 "over" "source unsub")))))
+
+
+(test tap
+  (let ((collector0)
+        (collectornext)
+        (collectorover)
+        (collector1)
+        (collectorfail)
+        (o (range 0 10))
+        (ofail (thrown 10)))
+    (subscribe (tap o (observer :onnext (lambda (value) (push (* 2 value) collectornext) 100)
+                                :onover (lambda () (push "tapover" collectorover))))
+               (observer :onnext (lambda (value) (push value collector0))
+                         :onover (lambda () (push "over" collector0))))
+    (subscribe (tap ofail (observer :onfail (lambda (reason) (push (* 2 reason) collectorfail))))
+               (observer :onfail (lambda (reason) (push reason collector1))))
+    (is (equal (reverse collector0) (list 0 1 2 3 4 5 6 7 8 9 "over")))
+    (is (equal (reverse collectornext) (list 0 2 4 6 8 10 12 14 16 18)))
+    (is (equal (reverse collectorover) (list "tapover")))
+    (is (equal (reverse collector1) (list 10)))
+    (is (equal (reverse collectorfail) (list 20)))))
+
+(test tap-function
+  (let ((o (observable
+            (lambda (observer)
+              (dotimes (x 10) (next observer x)))))
+        (collector0)
+        (collector1))
+    (subscribe (tap o (lambda (x) (push (* 2 x) collector0) 100)) (lambda (value) (push value collector1)))
+    (is (equal (reverse collector0) (list 0 2 4 6 8 10 12 14 16 18)))
+    (is (equal (reverse collector1) (list 0 1 2 3 4 5 6 7 8 9)))))
+
+(test tapnext
+  (let ((o (range 0 5))
+        (collector0)
+        (collector1))
+    (subscribe (tapnext o (lambda (x) (push (* 2 x) collector0) 100)) (lambda (value) (push value collector1)))
+    (is (equal (reverse collector0) (list 0 2 4 6 8)))
+    (is (equal (reverse collector1) (list 0 1 2 3 4)))))
+
+(test tapover
+  (let ((o (empty))
+        (collector0)
+        (collector1))
+    (subscribe (tapover o (lambda () (push "tapover" collector0)))
+               (observer :onover (lambda () (push "over" collector1))))
+    (is (equal (reverse collector0) (list "tapover")))
+    (is (equal (reverse collector1) (list "over")))))
 
 (test throttle
   (let* ((semaphore (make-semaphore))
