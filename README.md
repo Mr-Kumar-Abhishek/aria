@@ -75,10 +75,14 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod empty ())`
 - `(defmethod thrown (reason))`
 
+#### error-handling
+- `(defmethod retry ((self observable) (number integer)))`
+- `(defmethod retryuntil ((self observable) (predicate function)))`
+- `(defmethod retrywhen ((self observable) (notifier observable)))`
+
 #### filtering
 - `(defmethod debounce ((self observable) (observablefn function)))`
 - `(defmethod distinct ((self observable) &optional (compare #'eq)))`
-- `(defmethod each ((self observable) (consumer function)))`
 - `(defmethod filter ((self observable) (predicate function)))`
 - `(defmethod head ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod ignores ((self observable)))`
@@ -89,6 +93,11 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod skipwhile ((self observable) (predicate function)))`
 - `(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod take ((self observable) (count integer)))`
+- `(defmethod tap ((self observable) (consumer function)))`
+- `(defmethod tap ((self observable) (observer observer)))`
+- `(defmethod tapfail ((self observable) (consumer function)))`
+- `(defmethod tapnext ((self observable) (consumer function)))`
+- `(defmethod tapover ((self observable) (consumer function)))`
 - `(defmethod throttle ((self observable) (observablefn function)))`
 - `(defmethod throttletime ((self observable) (milliseconds integer)))`
 
