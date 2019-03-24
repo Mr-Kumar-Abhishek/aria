@@ -15,6 +15,7 @@
   (:use-reexport :aria.control.rx.operators.filtering.tail)
   (:use-reexport :aria.control.rx.operators.filtering.take)
   (:use-reexport :aria.control.rx.operators.filtering.tap)
+  (:use-reexport :aria.control.rx.operators.filtering.tapfail)
   (:use-reexport :aria.control.rx.operators.filtering.tapnext)
   (:use-reexport :aria.control.rx.operators.filtering.tapover)
   (:use-reexport :aria.control.rx.operators.filtering.throttle)

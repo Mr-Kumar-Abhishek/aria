@@ -63,8 +63,7 @@
   ;; error-handling operators
   (:export :retry
            :retryuntil
-           :retrywhen
-           :tapfail)
+           :retrywhen)
   ;; filtering operators
   (:export :distinct
            :debounce
@@ -79,6 +78,7 @@
            :tail
            :take
            :tap
+           :tapfail
            :tapnext
            :tapover
            :throttle

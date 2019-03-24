@@ -51,8 +51,7 @@
                                           :components
                                           ((:file "retry" :depends-on ("retryuntil"))
                                            (:file "retryuntil")
-                                           (:file "retrywhen" :depends-on ("retryuntil"))
-                                           (:file "tapfail")))
+                                           (:file "retrywhen" :depends-on ("retryuntil"))))
                                  (:file "filtering" :depends-on ("filtering-module"))
                                  (:module "filtering-module"
                                           :pathname "filtering"
@@ -70,6 +69,7 @@
                                            (:file "tail")
                                            (:file "take")
                                            (:file "tap" :depends-on ("tapnext"))
+                                           (:file "tapfail")
                                            (:file "tapnext")
                                            (:file "tapover")
                                            (:file "throttle")

@@ -4,7 +4,6 @@
   (:use :cl)
   (:use-reexport :aria.control.rx.operators.error-handling.retry)
   (:use-reexport :aria.control.rx.operators.error-handling.retryuntil)
-  (:use-reexport :aria.control.rx.operators.error-handling.retrywhen)
-  (:use-reexport :aria.control.rx.operators.error-handling.tapfail))
+  (:use-reexport :aria.control.rx.operators.error-handling.retrywhen))
 
 (in-package :aria.control.rx.operators.error-handling)

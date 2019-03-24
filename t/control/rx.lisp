@@ -41,8 +41,7 @@
   (:import-from :aria.control.rx
                 :retry
                 :retryuntil
-                :retrywhen
-                :tapfail)
+                :retrywhen)
   ;; filtering operators
   (:import-from :aria.control.rx
                 :distinct
@@ -58,6 +57,7 @@
                 :tail
                 :take
                 :tap
+                :tapfail
                 :tapnext
                 :tapover
                 :throttle
@@ -361,15 +361,6 @@
                                          "unsub 2"
                                          "unsub 1"
                                          "unsub 0")))))
-
-(test tapfail
-  (let ((o (thrown "fail"))
-        (collector0)
-        (collector1))
-    (subscribe (tapfail o (lambda (reason) (push (format nil "tap~A" reason) collector0)))
-               (observer :onfail (lambda (reason) (push reason collector1))))
-    (is (equal (reverse collector0) (list "tapfail")))
-    (is (equal (reverse collector1) (list "fail")))))
 
 ;; filtering operators
 
@@ -764,6 +755,15 @@
     (subscribe (tap o (lambda (x) (push (* 2 x) collector0) 100)) (lambda (value) (push value collector1)))
     (is (equal (reverse collector0) (list 0 2 4 6 8 10 12 14 16 18)))
     (is (equal (reverse collector1) (list 0 1 2 3 4 5 6 7 8 9)))))
+
+(test tapfail
+  (let ((o (thrown "fail"))
+        (collector0)
+        (collector1))
+    (subscribe (tapfail o (lambda (reason) (push (format nil "tap~A" reason) collector0)))
+               (observer :onfail (lambda (reason) (push reason collector1))))
+    (is (equal (reverse collector0) (list "tapfail")))
+    (is (equal (reverse collector1) (list "fail")))))
 
 (test tapnext
   (let ((o (range 0 5))

@@ -1,11 +1,11 @@
 (in-package :cl-user)
 
-(defpackage aria.control.rx.operators.error-handling.tapfail
+(defpackage aria.control.rx.operators.filtering.tapfail
   (:use :cl)
   (:use :aria.control.rx.util.operator)
   (:export :tapfail))
 
-(in-package :aria.control.rx.operators.error-handling.tapfail)
+(in-package :aria.control.rx.operators.filtering.tapfail)
 
 (defmethod tapfail ((self observable) (consumer function))
   (operator self
