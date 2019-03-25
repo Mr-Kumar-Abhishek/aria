@@ -69,10 +69,11 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 ### provide operators
 
 #### creation
-- `(defmethod of (&rest rest))`
-- `(defmethod from ((seq sequence)))`
-- `(defmethod range ((start integer) (count integer)))`
 - `(defmethod empty ())`
+- `(defmethod from ((seq sequence)))`
+- `(defmethod of (&rest rest))`
+- `(defmethod range ((start integer) (count integer)))`
+- `(defmethod start ((supplier function)))`
 - `(defmethod thrown (reason))`
 
 #### error-handling
