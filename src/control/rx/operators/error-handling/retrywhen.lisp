@@ -3,7 +3,7 @@
 (defpackage aria.control.rx.operators.error-handling.retrywhen
   (:use :cl)
   (:use :aria.control.rx.util.operator)
-  (:import-from :aria.control.rx.operators.error-handling.retryuntil
+  (:import-from :aria.control.rx.operators.error-handling.retry
                 ::retrycustom)
   (:export :retrywhen))
 

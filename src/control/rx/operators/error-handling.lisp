@@ -5,6 +5,7 @@
   (:use-reexport :aria.control.rx.operators.error-handling.catcher)
   (:use-reexport :aria.control.rx.operators.error-handling.retry)
   (:use-reexport :aria.control.rx.operators.error-handling.retryuntil)
-  (:use-reexport :aria.control.rx.operators.error-handling.retrywhen))
+  (:use-reexport :aria.control.rx.operators.error-handling.retrywhen)
+  (:use-reexport :aria.control.rx.operators.error-handling.retrywhile))
 
 (in-package :aria.control.rx.operators.error-handling)

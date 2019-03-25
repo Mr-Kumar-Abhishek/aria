@@ -50,9 +50,10 @@
                                           :pathname "error-handling"
                                           :components
                                           ((:file "catcher")
-                                           (:file "retry" :depends-on ("retryuntil"))
-                                           (:file "retryuntil")
-                                           (:file "retrywhen" :depends-on ("retryuntil"))))
+                                           (:file "retry")
+                                           (:file "retryuntil" :depends-on ("retry"))
+                                           (:file "retrywhen" :depends-on ("retry"))
+                                           (:file "retrywhile" :depends-on ("retry"))))
                                  (:file "filtering" :depends-on ("filtering-module"))
                                  (:module "filtering-module"
                                           :pathname "filtering"

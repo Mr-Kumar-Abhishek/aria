@@ -64,7 +64,8 @@
   (:export :catcher
            :retry
            :retryuntil
-           :retrywhen)
+           :retrywhen
+           :retrywhile)
   ;; filtering operators
   (:export :distinct
            :debounce

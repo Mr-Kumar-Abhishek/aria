@@ -3,6 +3,8 @@
 (defpackage aria.control.rx.operators.error-handling.retryuntil
   (:use :cl)
   (:use :aria.control.rx.util.operator)
+  (:import-from :aria.control.rx.operators.error-handling.retry
+                ::retrycustom)
   (:export :retryuntil))
 
 (in-package :aria.control.rx.operators.error-handling.retryuntil)
@@ -13,19 +15,3 @@
                         (if (funcall predicate reason)
                             (notifyfail subscriber reason)
                             (funcall retry))))))
-
-(defmethod retrycustom ((self observable) (customsupplier function))
-  (operator self
-            (lambda (subscriber)
-              (let* ((retry (lambda ()
-                              (within-inner-subscriber
-                               self
-                               subscriber
-                               (lambda (inner)
-                                 (declare (ignorable inner))
-                                 (observer :onnext (on-notifynext subscriber)
-                                           :onfail (onfail subscriber)
-                                           :onover (on-notifyover subscriber)))))))
-                (observer :onnext (on-notifynext subscriber)
-                          :onfail (funcall customsupplier subscriber retry)
-                          :onover (on-notifyover subscriber))))))
