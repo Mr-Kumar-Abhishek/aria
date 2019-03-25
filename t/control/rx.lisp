@@ -55,6 +55,7 @@
                 :single
                 :skip
                 :skipuntil
+                :skipwhen
                 :skipwhile
                 :tail
                 :take
@@ -620,6 +621,13 @@
     (is (equal (reverse collector) (list 1 2 3 4)))))
 
 (test skipuntil
+  (let ((collector)
+        (o (of 1 2 3 4 5 6)))
+    (subscribe (skipuntil o (lambda (value) (not (eq 0 (mod value 2)))))
+               (lambda (value) (push value collector)))
+    (is (equal (reverse collector) (list 2 4 6)))))
+
+(test skipwhen
   (let* ((collector)
          (o (observable (lambda (observer)
                           (dotimes (x 4)
@@ -627,15 +635,15 @@
                           (fail observer "source fail")
                           (lambda ()
                             (push "source unsub" collector))))))
-    (subscribe (skipuntil o (observable (lambda (observer)
+    (subscribe (skipwhen o (observable (lambda (observer)
                                          (next observer 4)
                                          (lambda ()
                                            (push "inner unsub" collector)))))
-              (observer :onnext (lambda (value) (push value collector))
-                        :onfail (lambda (reason) (push reason collector))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onfail (lambda (reason) (push reason collector))))
     (is (equal (reverse collector) (list "inner unsub" 0 1 2 3 "source fail" "source unsub")))))
 
-(test skipuntil-inner-fail
+(test skipwhen-inner-fail
   (let* ((collector)
          (o (observable (lambda (observer)
                           (dotimes (x 4)
@@ -643,7 +651,7 @@
                           (fail observer "source fail")
                           (lambda ()
                             (push "source unsub" collector))))))
-    (subscribe (skipuntil o (observable (lambda (observer)
+    (subscribe (skipwhen o (observable (lambda (observer)
                                          (fail observer "inner fail")
                                          (lambda ()
                                            (push "inner unsub" collector)))))
@@ -651,7 +659,7 @@
                         :onfail (lambda (reason) (push reason collector))))
     (is (equal (reverse collector) (list "inner fail" "inner unsub" "source unsub")))))
 
-(test skipuntil-async
+(test skipwhen-async
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 4) (wait-on-semaphore semaphore :timeout 0.2)))))
          (collector)
@@ -662,22 +670,22 @@
                                            (next observer x))))
                           (lambda ()
                             (push "source unsub" collector))))))
-    (subscribe (skipuntil o
-                          (observable (lambda (observer)
-                                        (make-thread
-                                         (lambda ()
-                                           (sleep 0.015)
-                                           (next observer "notify")
-                                           (fail observer "fail")))
+    (subscribe (skipwhen o
+                         (observable (lambda (observer)
+                                       (make-thread
                                         (lambda ()
-                                          (push "inner unsub" collector)
-                                          (signal-semaphore semaphore)))))
+                                          (sleep 0.015)
+                                          (next observer "notify")
+                                          (fail observer "fail")))
+                                       (lambda ()
+                                         (push "inner unsub" collector)
+                                         (signal-semaphore semaphore)))))
                (observer :onnext (lambda (value) (push value collector) (signal-semaphore semaphore))
                          :onfail (lambda (reason) (push reason collector))))
     (join-thread th)
     (is (equal (reverse collector) (list "inner unsub" 1 2 3)))))
 
-(test skipuntil-async-inner-fail
+(test skipwhen-async-inner-fail
   (let* ((semaphore (make-semaphore))
          (th (make-thread (lambda () (dotimes (x 3) (wait-on-semaphore semaphore :timeout 0.2)))))
          (collector)
@@ -689,15 +697,15 @@
                           (lambda ()
                             (push "source unsub" collector)
                             (signal-semaphore semaphore))))))
-    (subscribe (skipuntil o
-                          (observable (lambda (observer)
-                                        (make-thread
-                                         (lambda ()
-                                           (sleep 0.015)
-                                           (fail observer "fail")))
+    (subscribe (skipwhen o
+                         (observable (lambda (observer)
+                                       (make-thread
                                         (lambda ()
-                                          (push "inner unsub" collector)
-                                          (signal-semaphore semaphore)))))
+                                          (sleep 0.015)
+                                          (fail observer "fail")))
+                                       (lambda ()
+                                         (push "inner unsub" collector)
+                                         (signal-semaphore semaphore)))))
                (observer :onnext (lambda (value) (push value collector))
                          :onfail (lambda (reason) (push reason collector) (signal-semaphore semaphore))))
     (join-thread th)
