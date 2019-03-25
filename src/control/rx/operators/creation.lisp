@@ -6,6 +6,7 @@
   (:use-reexport :aria.control.rx.operators.creation.from)
   (:use-reexport :aria.control.rx.operators.creation.of)
   (:use-reexport :aria.control.rx.operators.creation.range)
+  (:use-reexport :aria.control.rx.operators.creation.start)
   (:use-reexport :aria.control.rx.operators.creation.thrown))
 
 (in-package :aria.control.rx.operators.creation)

@@ -55,10 +55,11 @@
   ;; operators
   (:use :aria.control.rx.operators)
   ;; creation operators
-  (:export :of
+  (:export :empty
            :from
+           :of
            :range
-           :empty
+           :start
            :thrown)
   ;; error-handling operators
   (:export :catcher

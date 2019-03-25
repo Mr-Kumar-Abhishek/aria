@@ -44,6 +44,7 @@
                                            (:file "from")
                                            (:file "of")
                                            (:file "range")
+                                           (:file "start")
                                            (:file "thrown")))
                                  (:file "error-handling" :depends-on ("error-handling-module"))
                                  (:module "error-handling-module"
