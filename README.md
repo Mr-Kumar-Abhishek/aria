@@ -80,6 +80,7 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod retry ((self observable) (number integer)))`
 - `(defmethod retryuntil ((self observable) (predicate function)))`
 - `(defmethod retrywhen ((self observable) (notifier observable)))`
+- `(defmethod retrywhile ((self observable) (predicate function)))`
 
 #### filtering
 - `(defmethod debounce ((self observable) (observablefn function)))`
@@ -90,7 +91,8 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod sample ((self observable) (sampler observable)))`
 - `(defmethod single ((self observable) (predicate function)))`
 - `(defmethod skip ((self observable) (integer integer)))`
-- `(defmethod skipuntil ((self observable) (notifier observable)))`
+- `(defmethod skipuntil ((self observable) (predicate function)))`
+- `(defmethod skipwhen ((self observable) (notifier observable)))`
 - `(defmethod skipwhile ((self observable) (predicate function)))`
 - `(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod take ((self observable) (count integer)))`
