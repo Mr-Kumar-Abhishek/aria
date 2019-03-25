@@ -67,6 +67,7 @@
                                            (:file "single")
                                            (:file "skip")
                                            (:file "skipuntil")
+                                           (:file "skipwhen")
                                            (:file "skipwhile")
                                            (:file "tail")
                                            (:file "take")
