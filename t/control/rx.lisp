@@ -32,10 +32,11 @@
                 :with-pipe)
   ;; creation operators
   (:import-from :aria.control.rx
-                :of
-                :from
-                :range
                 :empty
+                :from
+                :of
+                :range
+                :start
                 :thrown)
   ;; error-handling operators
   (:import-from :aria.control.rx
@@ -247,30 +248,6 @@
 
 ;; creation operators
 
-(test of
-  (let* ((o (of 1 2 3 "hi" "go"))
-         (collector)
-         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
-                                              :onover (lambda () (push "end" collector))))))
-    (is (equal (reverse collector) (list 1 2 3 "hi" "go" "end")))
-    (is (isunsubscribed subscriber))))
-
-(test from
-  (let* ((o (from "hello world"))
-         (collector)
-         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
-                                              :onover (lambda () (push "end" collector))))))
-    (is (equal (reverse collector) (list #\h #\e #\l #\l #\o #\  #\w #\o #\r #\l #\d "end")))
-    (is (isunsubscribed subscriber))))
-
-(test range
-  (let* ((o (range 0 10))
-         (collector)
-         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
-                                              :onover (lambda () (push "end" collector))))))
-    (is (equal (reverse collector) (list 0 1 2 3 4 5 6 7 8 9 "end")))
-    (is (isunsubscribed subscriber))))
-
 (test empty
   (let* ((o (empty))
          (collector)
@@ -278,11 +255,43 @@
     (is (equal (reverse collector) (list "end")))
     (is (isunsubscribed subscriber))))
 
+(test from
+  (let* ((o (from "hello world"))
+         (collector)
+         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                            :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list #\h #\e #\l #\l #\o #\  #\w #\o #\r #\l #\d "end")))
+    (is (isunsubscribed subscriber))))
+
+(test of
+  (let* ((o (of 1 2 3 "hi" "go"))
+         (collector)
+         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                            :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list 1 2 3 "hi" "go" "end")))
+    (is (isunsubscribed subscriber))))
+
+(test range
+  (let* ((o (range 0 10))
+         (collector)
+         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                            :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 5 6 7 8 9 "end")))
+    (is (isunsubscribed subscriber))))
+
+(test start
+  (let* ((o (start (lambda () 0)))
+         (collector)
+         (subscriber (subscribe o (observer :onnext (lambda (value) (push value collector))
+                                            :onover (lambda () (push "end" collector))))))
+    (is (equal (reverse collector) (list 0 "end")))
+    (is (isunsubscribed subscriber))))
+
 (test thrown
   (let* ((o (thrown "fail"))
          (collector)
          (subscriber (subscribe o (observer :onfail (lambda (reason) (push reason collector))
-                                              :onover (lambda () (push "end" collector))))))
+                                            :onover (lambda () (push "end" collector))))))
     (is (equal (reverse collector) (list "fail")))
     (is (isunsubscribed subscriber))))
 
