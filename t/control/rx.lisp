@@ -42,7 +42,8 @@
                 :catcher
                 :retry
                 :retryuntil
-                :retrywhen)
+                :retrywhen
+                :retrywhile)
   ;; filtering operators
   (:import-from :aria.control.rx
                 :distinct
@@ -377,6 +378,29 @@
                                          "sub 2" 2
                                          2
                                          "unsub notifier"
+                                         "unsub 2"
+                                         "unsub 1"
+                                         "unsub 0")))))
+
+(test retrywhile
+  (let* ((count 0)
+         (collector)
+         (o (observable
+             (lambda (observer)
+               (let ((copy count))
+                 (incf count)
+                 (push (format nil "sub ~A" copy) collector)
+                 (fail observer copy)
+                 (lambda ()
+                   (push (format nil "unsub ~A" copy) collector)))))))
+    (subscribe (with-pipe o
+                 (tapfail (lambda (reason) (push reason collector)))
+                 (retrywhile (lambda (val) (< val 2))))
+               (observer :onfail (lambda (reason) (push reason collector))))
+    (is (equal (reverse collector) (list "sub 0" 0
+                                         "sub 1" 1
+                                         "sub 2" 2
+                                         2
                                          "unsub 2"
                                          "unsub 1"
                                          "unsub 0")))))
