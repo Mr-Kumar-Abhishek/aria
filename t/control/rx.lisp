@@ -358,7 +358,7 @@
                                          "unsub 1"
                                          "unsub 0")))))
 
-(test retrywhen
+(test retryuntil-observable
   (let* ((count 0)
          (collector)
          (event)
@@ -380,7 +380,7 @@
                    (push (format nil "unsub ~A" copy) collector)))))))
     (subscribe (with-pipe o
                  (tapfail (lambda (reason) (push reason collector)))
-                 (retrywhen notifier))
+                 (retryuntil notifier))
                (observer :onfail (lambda (reason) (push reason collector))))
     (is (equal (reverse collector) (list "sub 0" 0
                                          "sub 1" 1

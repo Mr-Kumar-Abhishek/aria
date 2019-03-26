@@ -80,6 +80,7 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod catcher ((self observable) (observablefn function)))`
 - `(defmethod retry ((self observable) (number integer)))`
 - `(defmethod retryuntil ((self observable) (predicate function)))`
+- `(defmethod retryuntil ((self observable) (notifier observable)))`
 - `(defmethod retrywhen ((self observable) (notifier observable)))`
 - `(defmethod retrywhile ((self observable) (predicate function)))`
 

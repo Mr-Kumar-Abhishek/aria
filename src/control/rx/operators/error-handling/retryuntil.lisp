@@ -15,3 +15,23 @@
                         (if (funcall predicate reason)
                             (notifyfail subscriber reason)
                             (funcall retry))))))
+
+(defmethod retryuntil ((self observable) (notifier observable))
+  (retrycustom self (lambda (subscriber retry)
+                      (let ((notified))
+                        (before subscriber
+                                (lambda ()
+                                  (within-inner-subscriber
+                                   notifier
+                                   subscriber
+                                   (lambda (inner)
+                                     (observer :onnext
+                                               (lambda (value)
+                                                 (setf notified t)
+                                                 (notifynext inner value))
+                                               :onfail (on-notifyfail subscriber)
+                                               :onover (on-notifyover inner))))))
+                        (lambda (reason)
+                          (if notified
+                              (notifyfail subscriber reason)
+                              (funcall retry)))))))
