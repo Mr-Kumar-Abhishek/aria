@@ -11,7 +11,6 @@
   (:use-reexport :aria.control.rx.operators.filtering.single)
   (:use-reexport :aria.control.rx.operators.filtering.skip)
   (:use-reexport :aria.control.rx.operators.filtering.skipuntil)
-  (:use-reexport :aria.control.rx.operators.filtering.skipwhen)
   (:use-reexport :aria.control.rx.operators.filtering.skipwhile)
   (:use-reexport :aria.control.rx.operators.filtering.tail)
   (:use-reexport :aria.control.rx.operators.filtering.take)

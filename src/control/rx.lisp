@@ -77,7 +77,6 @@
            :single
            :skip
            :skipuntil
-           :skipwhen
            :skipwhile
            :tail
            :take
