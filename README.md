@@ -98,6 +98,9 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod skipwhile ((self observable) (predicate function)))`
 - `(defmethod tail ((self observable) &optional (predicate #'tautology) (default nil default-supplied)))`
 - `(defmethod take ((self observable) (count integer)))`
+- `(defmethod takeuntil ((self observable) (predicate function)))`
+- `(defmethod takeuntil ((self observable) (notifier observable)))`
+- `(defmethod takewhile ((self observable) (predicate function)))`
 - `(defmethod tap ((self observable) (consumer function)))`
 - `(defmethod tap ((self observable) (observer observer)))`
 - `(defmethod tapfail ((self observable) (consumer function)))`
