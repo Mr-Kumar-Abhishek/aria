@@ -59,6 +59,8 @@
                 :skipwhile
                 :tail
                 :take
+                :takeuntil
+                :takewhile
                 :tap
                 :tapfail
                 :tapnext
@@ -813,6 +815,35 @@
     (join-thread th)
     (is (equal (reverse collector) (list 0 1 "over" "source unsub")))))
 
+(test takeuntil
+  (let ((collector)
+        (o (range 0 10)))
+    (subscribe (takeuntil o (lambda (value) (not (< value 5))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 "over")))))
+
+(test takeuntil-observable
+  (let* ((collector)
+         (event)
+         (o (with-pipe (range 0 10)
+              (tapnext (lambda (value) (if (not (< value 5)) (funcall event)))))))
+    (subscribe (takeuntil o (observable
+                             (lambda (observer)
+                               (setf event (lambda () (next observer nil)))
+                               (lambda ()
+                                 (push "notifier unsub" collector)))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 "notifier unsub" "over")))))
+
+(test takewhile
+  (let ((collector)
+        (o (range 0 10)))
+    (subscribe (takewhile o (lambda (value) (< value 5)))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list 0 1 2 3 4 "over")))))
 
 (test tap
   (let ((collector0)
