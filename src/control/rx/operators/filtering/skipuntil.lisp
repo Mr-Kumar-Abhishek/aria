@@ -20,7 +20,7 @@
 (defmethod skipuntil ((self observable) (notifier observable))
   (operator self
             (lambda (subscriber)
-              (let ((notify))
+              (let ((notified))
                 (before subscriber
                         (lambda ()
                           (within-inner-subscriber
@@ -30,14 +30,14 @@
                              (observer :onnext
                                        (lambda (value)
                                          (declare (ignorable value))
-                                         (unless notify
-                                           (setf notify t)
+                                         (unless notified
+                                           (setf notified t)
                                            (unsubscribe inner)))
                                        :onfail (onfail subscriber)
                                        :onover (on-notifyover inner))))))
                 (observer :onnext
                           (lambda (value)
-                            (if notify
+                            (if notified
                                 (notifynext subscriber value)))
                           :onfail (on-notifyfail subscriber)
                           :onover (on-notifyover subscriber))))))
