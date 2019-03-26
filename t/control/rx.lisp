@@ -384,9 +384,9 @@
                (observer :onfail (lambda (reason) (push reason collector))))
     (is (equal (reverse collector) (list "sub 0" 0
                                          "sub 1" 1
+                                         "unsub notifier"
                                          "sub 2" 2
                                          2
-                                         "unsub notifier"
                                          "unsub 2"
                                          "unsub 1"
                                          "unsub 0")))))

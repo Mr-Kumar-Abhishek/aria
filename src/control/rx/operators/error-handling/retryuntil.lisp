@@ -27,8 +27,9 @@
                                    (lambda (inner)
                                      (observer :onnext
                                                (lambda (value)
+                                                 (declare (ignorable value))
                                                  (setf notified t)
-                                                 (notifynext inner value))
+                                                 (unsubscribe inner))
                                                :onfail (on-notifyfail subscriber)
                                                :onover (on-notifyover inner))))))
                         (lambda (reason)
