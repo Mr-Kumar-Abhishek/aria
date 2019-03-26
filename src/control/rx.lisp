@@ -80,6 +80,8 @@
            :skipwhile
            :tail
            :take
+           :takeuntil
+           :takewhile
            :tap
            :tapfail
            :tapnext

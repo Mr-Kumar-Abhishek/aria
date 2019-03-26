@@ -71,6 +71,8 @@
                                            (:file "skipwhile")
                                            (:file "tail")
                                            (:file "take")
+                                           (:file "takeuntil")
+                                           (:file "takewhile")
                                            (:file "tap" :depends-on ("tapnext"))
                                            (:file "tapfail")
                                            (:file "tapnext")
