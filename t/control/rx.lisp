@@ -391,6 +391,35 @@
                                          "unsub 1"
                                          "unsub 0")))))
 
+(test retrywhen
+  (let* ((count 0)
+         (collector)
+         (o (observable
+             (lambda (observer)
+               (let ((copy count))
+                 (incf count)
+                 (push (format nil "sub ~A" copy) collector)
+                 (fail observer copy)
+                 (lambda ()
+                   (push (format nil "unsub ~A" copy) collector)))))))
+    (subscribe (with-pipe o
+                 (retrywhen (lambda (notifier)
+                              (with-pipe notifier
+                                (tap (lambda (value) (push (format nil "tap next ~A" value) collector)))
+                                (flatmap (lambda (value)
+                                           (if (< value 2)
+                                               (of value)
+                                               (thrown value))))))))
+               (observer :onnext (lambda (value) (push (format nil "next ~A" value) collector))
+                         :onfail (lambda (reason) (push (format nil "fail ~A" reason) collector))))
+    (is (equal (reverse collector) (list "sub 0" "tap next 0"
+                                         "sub 1" "tap next 1"
+                                         "sub 2" "tap next 2"
+                                         "fail 2"
+                                         "unsub 2"
+                                         "unsub 1"
+                                         "unsub 0")))))
+
 (test retrywhile
   (let* ((count 0)
          (collector)
