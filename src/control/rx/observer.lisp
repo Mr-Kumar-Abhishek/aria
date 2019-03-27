@@ -40,12 +40,12 @@
 
 (defmethod next ((self observer) value)
   (safe-funcall (onnext self) value)
-  nil)
+  (values))
 
 (defmethod fail ((self observer) reason)
   (safe-funcall (onfail self) reason)
-  nil)
+  (values))
 
 (defmethod over ((self observer))
   (safe-funcall (onover self))
-  nil)
+  (values))

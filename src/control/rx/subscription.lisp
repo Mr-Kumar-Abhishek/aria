@@ -46,4 +46,4 @@
   (with-caslock-once (lock self)
     (setf (isunsubscribed self) t)
     (safe-funcall (onunsubscribe self)))
-  nil)
+  (values))

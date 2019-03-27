@@ -83,7 +83,7 @@
   (unless (isstop self)
     (handler-case (next-in (connector self) value)
       (error (reason) (fail self reason))))
-  nil)
+  (values))
 
 (defmethod next-in ((self observer) value)
   (safe-funcall (onnext self) value))
@@ -95,7 +95,7 @@
 (defmethod fail ((self subscriber) reason)
   (unless (isstop self)
     (fail-in (connector self) reason)
-  nil))
+  (values)))
 
 (defmethod fail-in ((self observer) reason)
   (safe-funcall (onfail self) reason))
@@ -107,7 +107,7 @@
 (defmethod over ((self subscriber))
   (unless (isstop self)
     (over-in (connector self)))
-  nil)
+  (values))
 
 (defmethod over-in ((self observer))
   (safe-funcall (onover self)))
@@ -131,7 +131,7 @@
 (defmethod notifynext :around ((self subscriber) value)
   (unless (or (isclose self) (isstop self))
     (call-next-method))
-  nil)
+  (values))
 
 (defmethod notifyfail :around ((self subscriber) reason)
   (unless (or (isclose self) (isstop self))
@@ -139,7 +139,7 @@
       (setf (isclose self) t)
       (unwind-protect (call-next-method)
         (unsubscribe self))))
-  nil)
+  (values))
 
 (defmethod notifyover :around ((self subscriber))
   (unless (or (isclose self) (isstop self))
@@ -147,7 +147,7 @@
       (setf (isclose self) t)
       (unwind-protect (call-next-method)
         (unsubscribe self))))
-  nil)
+  (values))
 
 (defmethod on-notifynext ((self subscriber))
   (lambda (value)
