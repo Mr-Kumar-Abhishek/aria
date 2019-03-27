@@ -95,7 +95,8 @@
                                            (:file "mapto")
                                            (:file "reducer")
                                            (:file "scan")
-                                           (:file "switchmap")))))))))
+                                           (:file "switchmap")
+                                           (:file "window")))))))))
    (:module "structure"
             :components
             ((:file "interface")

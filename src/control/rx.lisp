@@ -101,7 +101,8 @@
            :mapto
            :reducer
            :scan
-           :switchmap))
+           :switchmap
+           :window))
 
 (in-package :aria.control.rx)
 
