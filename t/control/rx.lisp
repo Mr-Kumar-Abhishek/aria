@@ -81,7 +81,8 @@
                 :mapto
                 :reducer
                 :scan
-                :switchmap))
+                :switchmap
+                :window))
 
 (in-package :aria-test.control.rx)
 
@@ -117,8 +118,8 @@
 
 (test subscriberp
   (let ((o (observable
-             (lambda (observer)
-               (declare (ignorable observer))))))
+            (lambda (observer)
+              (declare (ignorable observer))))))
     (is (subscriberp (subscribe o (observer :onnext (lambda (value) value)))))))
 
 (test subscriber-manually-unsubscribe
@@ -993,8 +994,8 @@
          (o (observable
              (lambda (observer)
                (make-thread (lambda ()
-                                 (dotimes (x 7) (sleep 0.01)
-                                          (next observer x)))))))
+                              (dotimes (x 7) (sleep 0.01)
+                                       (next observer x)))))))
          (collector)
          (times))
     (subscribe (throttletime o 20)
@@ -1011,8 +1012,8 @@
          (o (observable
              (lambda (observer)
                (make-thread (lambda ()
-                                 (dotimes (x 7) (sleep 0.01)
-                                          (next observer x)))))))
+                              (dotimes (x 7) (sleep 0.01)
+                                       (next observer x)))))))
          (collector))
     (subscribe (throttle o (lambda (v)
                              (declare (ignorable v))
@@ -1326,7 +1327,7 @@
                             (dotimes (x 3)
                               (next observer (+ (+ x 1) val)))
                             (lambda ()
-                                (push (format nil "inner unsub ~A" val) collector)))))))
+                              (push (format nil "inner unsub ~A" val) collector)))))))
     (subscribe (flatmap o observablefn)
                (observer :onnext (lambda (value) (push value collector))
                          :onfail (lambda (reason) (push reason collector))))
@@ -1352,7 +1353,7 @@
                               (next observer (+ (+ x 1) val)))
                             (fail observer "fail")
                             (lambda ()
-                                (push (format nil "inner unsub ~A" val) collector)))))))
+                              (push (format nil "inner unsub ~A" val) collector)))))))
     (subscribe (flatmap o observablefn)
                (observer :onnext (lambda (value) (push value collector))
                          :onfail (lambda (reason) (push reason collector))))
@@ -1376,7 +1377,7 @@
                               (next observer (+ (+ x 1) val)))
                             (over observer)
                             (lambda ()
-                                (push (format nil "inner unsub ~A" val) collector)))))))
+                              (push (format nil "inner unsub ~A" val) collector)))))))
     (subscribe (flatmap o observablefn)
                (observer :onnext (lambda (value) (push value collector))
                          :onover (lambda () (push "over" collector))))
@@ -1405,8 +1406,8 @@
                             (lambda ()
                               (push (format nil "inner unsub ~A" val) collector))))))
          (subscriber (subscribe (flatmap o observablefn)
-                                  (observer :onnext (lambda (value) (push value collector))
-                                            :onover (lambda () (push "over" collector))))))
+                                (observer :onnext (lambda (value) (push value collector))
+                                          :onover (lambda () (push "over" collector))))))
     (is (equal (reverse collector) (list 11 12 13
                                          21 22 23
                                          31 32 33)))
@@ -1503,7 +1504,7 @@
                                       (push (format nil "inner unsub ~A" val) collector))))
                                  (lambda (x) (+ x val)))))
          (subscriber (subscribe (switchmap o observablefn)
-                                  (lambda (value) (push value collector)))))
+                                (lambda (value) (push value collector)))))
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
                                          31 32 33)))
@@ -1530,8 +1531,8 @@
                                       (push (format nil "inner unsub ~A" val) collector))))
                                  (lambda (x) (+ x val)))))
          (subscriber (subscribe (switchmap o observablefn)
-                                  (observer :onnext (lambda (value) (push value collector))
-                                            :onover (lambda () (push "over" collector))))))
+                                (observer :onnext (lambda (value) (push value collector))
+                                          :onover (lambda () (push "over" collector))))))
     (is (equal (reverse collector) (list 11 12 13 "inner unsub 10"
                                          21 22 23 "inner unsub 20"
                                          31 32 33)))
@@ -1584,8 +1585,8 @@
                                       (push (format nil "inner unsub ~A" val) collector))))
                                  (lambda (x) (+ x val)))))
          (subscriber (subscribe (switchmap o observablefn)
-                                  (observer :onnext (lambda (value) (push value collector))
-                                            :onfail (lambda (reason) (push reason collector))))))
+                                (observer :onnext (lambda (value) (push value collector))
+                                          :onfail (lambda (reason) (push reason collector))))))
     (is (equal (reverse collector) (list 11 12 13
                                          "fail"
                                          "inner unsub 10"
@@ -1595,3 +1596,28 @@
                                          "fail"
                                          "inner unsub 10"
                                          "source unsub")))))
+
+(test window
+  (let ((collector)
+        (count 0)
+        (event)
+        (o (range 0 9)))
+    (subscribe (with-pipe o
+                 (tap (lambda (value)
+                        (if (and (eq (mod value 3) 0)
+                                 (not (eq value 0)))
+                            (progn
+                              (incf count)
+                              (funcall event)))))
+                 (window (observable
+                          (lambda (observer)
+                            (setf event (lambda () (next observer nil))))))
+                 (flatmap (lambda (notifier)
+                            (tap notifier (lambda (value)
+                                            (push (format nil "window ~A: ~A" count value) collector))))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list "window 0: 0" 0 "window 0: 1" 1 "window 0: 2" 2
+                                         "window 1: 3" 3 "window 1: 4" 4 "window 1: 5" 5
+                                         "window 2: 6" 6 "window 2: 7" 7 "window 2: 8" 8
+                                         "over")))))
