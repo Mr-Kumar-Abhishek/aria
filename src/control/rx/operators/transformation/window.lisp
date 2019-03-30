@@ -10,18 +10,10 @@
 (defmethod window ((self observable) (notifier observable))
   (operator self
             (lambda (subscriber)
-              (let* ((prevob)
-                     (prevnext)
-                     (prevover)
-                     (prev (lambda ()
-                             (setf prevnext nil)
-                             (if prevover (funcall prevover))
-                             (setf prevover nil)
-                             (setf prevob (observable
-                                           (lambda (observer)
-                                             (setf prevnext (lambda (value) (next observer value)))
-                                             (setf prevover (lambda () (over observer)))
-                                             (values)))))))
+              (let* ((prev)
+                     (open-window (lambda ()
+                                    (if prev (over prev))
+                                    (setf prev (create-window)))))
                 (before subscriber
                         (lambda ()
                           (within-inner-subscriber
@@ -32,19 +24,49 @@
                              (observer :onnext
                                        (lambda (value)
                                          (declare (ignorable value))
-                                         (funcall prev)
-                                         (notifynext subscriber prevob))
+                                         (funcall open-window)
+                                         (notifynext subscriber (source prev)))
                                        :onfail (onfail subscriber)
                                        :onover (onover subscriber))))))
                 (observer :onnext
                           (lambda (value)
-                            (unless prevob
-                              (funcall prev)
-                              (notifynext subscriber prevob))
-                            (if prevnext
-                                (funcall prevnext value)))
+                            (unless prev
+                              (funcall open-window)
+                              (notifynext subscriber (source prev)))
+                            (next prev value))
                           :onfail (on-notifyfail subscriber)
                           :onover
                           (lambda ()
-                            (if prevover (funcall prevover))
+                            (if prev (over prev))
                             (notifyover subscriber)))))))
+
+(defclass window ()
+  ((source :initform nil
+           :accessor source
+           :type observable)
+   (destination :initform nil
+                :accessor destination
+                :type (or null subscriber observer))))
+
+(defmethod create-window ()
+  (let ((window (make-instance 'window)))
+    (setf (source window) (observable (lambda (observer) (setf (destination window) observer))))
+    window))
+
+(defmethod next ((self window) value)
+  (let ((destination (destination self)))
+    (if destination
+        (next destination value))
+    (values)))
+
+(defmethod fail ((self window) reason)
+  (let ((destination (destination self)))
+    (if destination
+        (fail destination reason))
+    (values)))
+
+(defmethod over ((self window))
+  (let ((destination (destination self)))
+    (if destination
+        (over destination))
+    (values)))
