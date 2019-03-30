@@ -94,8 +94,8 @@
 
 (defmethod fail ((self subscriber) reason)
   (unless (isstop self)
-    (fail-in (connector self) reason)
-  (values)))
+    (fail-in (connector self) reason))
+  (values))
 
 (defmethod fail-in ((self observer) reason)
   (safe-funcall (onfail self) reason))
