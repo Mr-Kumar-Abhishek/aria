@@ -61,9 +61,9 @@
    (notifylock :initform (caslock)
                :accessor notifylock
                :type caslock)
-   (source :initform nil
-           :accessor source
-           :type (or null subscription))
+   (release :initform nil
+            :accessor release
+            :type (or null subscription))
    (inners :initform nil
            :accessor inners
            :type list)
@@ -172,8 +172,8 @@
   subscriber)
 
 (defmethod subscribe-subscriber ((self observable) (subscriber subscriber))
-  (setf (source subscriber) (subscription-pass (handler-case (funcall (revolver self) subscriber)
-                                                 (error (reason) (notifyfail subscriber reason))))))
+  (setf (release subscriber) (subscription-pass (handler-case (funcall (revolver self) subscriber)
+                                                  (error (reason) (notifyfail subscriber reason))))))
 
 (defmethod unsubscribe :around ((self subscriber))
   (with-caslock (spinlock self)
@@ -183,10 +183,10 @@
   self)
 
 (defmethod unsubscribe ((self subscriber))
-  (unsubscribe (source self)))
+  (unsubscribe (release self)))
 
 (defmethod unsubscribe ((self null))
   (declare (ignorable self)))
 
 (defmethod isunsubscribed ((self subscriber))
-  (isunsubscribed (source self)))
+  (isunsubscribed (release self)))
