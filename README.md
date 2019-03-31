@@ -196,3 +196,4 @@ Elements could be add to the circular array in both direction.
 - `(defmethod size ((self ring)))`
 - `(defmethod emptyp ((self ring)))`
 - `(defmethod tolist ((self ring)))`
+- `(defmethod doring ((self ring) (consumer function)))`
