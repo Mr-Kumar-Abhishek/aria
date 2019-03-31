@@ -82,7 +82,8 @@
                 :reducer
                 :scan
                 :switchmap
-                :window))
+                :window
+                :windowcount))
 
 (in-package :aria-test.control.rx)
 
@@ -1620,4 +1621,47 @@
     (is (equal (reverse collector) (list "window 0: 0" 0 "window 0: 1" 1 "window 0: 2" 2
                                          "window 1: 3" 3 "window 1: 4" 4 "window 1: 5" 5
                                          "window 2: 6" 6 "window 2: 7" 7 "window 2: 8" 8
+                                         "over")))))
+
+(test windowcount
+  (let ((count 0)
+        (collector)
+        (o (range 0 9)))
+    (subscribe (with-pipe o
+                 (windowcount 4 2)
+                 (flatmap (lambda (window)
+                            (let ((copy count))
+                              (incf count)
+                              (push (format nil "create window ~A" copy) collector)
+                              (with-pipe window
+                                (tapover (lambda () (push (format nil "close window ~A" copy) collector)))
+                                (mapper (lambda (value) (format nil "window ~A: ~A" copy value))))))))
+               (observer :onnext (lambda (value) (push value collector))
+                         :onover (lambda () (push "over" collector))))
+    (is (equal (reverse collector) (list "create window 0"
+                                         "window 0: 0"
+                                         "window 0: 1"
+                                         "create window 1"
+                                         "window 0: 2"
+                                         "window 1: 2"
+                                         "window 0: 3"
+                                         "window 1: 3"
+                                         "close window 0"
+                                         "create window 2"
+                                         "window 1: 4"
+                                         "window 2: 4"
+                                         "window 1: 5"
+                                         "window 2: 5"
+                                         "close window 1"
+                                         "create window 3"
+                                         "window 2: 6"
+                                         "window 3: 6"
+                                         "window 2: 7"
+                                         "window 3: 7"
+                                         "close window 2"
+                                         "create window 4"
+                                         "window 3: 8"
+                                         "window 4: 8"
+                                         "close window 3"
+                                         "close window 4"
                                          "over")))))
