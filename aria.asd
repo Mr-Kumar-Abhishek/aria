@@ -96,7 +96,8 @@
                                            (:file "reducer")
                                            (:file "scan")
                                            (:file "switchmap")
-                                           (:file "window")))))))))
+                                           (:file "window")
+                                           (:file "windowcount" :depends-on ("window"))))))))))
    (:module "structure"
             :components
             ((:file "interface")

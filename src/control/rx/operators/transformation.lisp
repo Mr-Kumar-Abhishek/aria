@@ -15,6 +15,7 @@
   (:use-reexport :aria.control.rx.operators.transformation.reducer)
   (:use-reexport :aria.control.rx.operators.transformation.scan)
   (:use-reexport :aria.control.rx.operators.transformation.switchmap)
-  (:use-reexport :aria.control.rx.operators.transformation.window))
+  (:use-reexport :aria.control.rx.operators.transformation.window)
+  (:use-reexport :aria.control.rx.operators.transformation.windowcount))
 
 (in-package :aria.control.rx.operators.transformation)

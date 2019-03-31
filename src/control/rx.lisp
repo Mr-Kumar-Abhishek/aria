@@ -102,7 +102,8 @@
            :reducer
            :scan
            :switchmap
-           :window))
+           :window
+           :windowcount))
 
 (in-package :aria.control.rx)
 
