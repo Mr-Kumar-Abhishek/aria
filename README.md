@@ -123,6 +123,8 @@ Reactive Extensions for common lisp inspired by [reactivex](http://reactivex.io/
 - `(defmethod reducer ((self observable) (function function) initial-value))`
 - `(defmethod scan ((self observable) (function function) initial-value))`
 - `(defmethod switchmap ((self observable) (observablefn function)))`
+- `(defmethod window ((self observable) (notifier observable)))`
+- `(defmethod windowcount ((self observable) (count integer) &optional (overlap count)))`
 
 ## aria.structure.queue
 Just a normal queue
