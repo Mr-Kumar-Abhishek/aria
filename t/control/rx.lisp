@@ -1612,9 +1612,9 @@
                  (window (observable
                           (lambda (observer)
                             (setf event (lambda () (next observer nil))))))
-                 (flatmap (lambda (notifier)
-                            (tap notifier (lambda (value)
-                                            (push (format nil "window ~A: ~A" count value) collector))))))
+                 (flatmap (lambda (window)
+                            (tap window (lambda (value)
+                                          (push (format nil "window ~A: ~A" count value) collector))))))
                (observer :onnext (lambda (value) (push value collector))
                          :onover (lambda () (push "over" collector))))
     (is (equal (reverse collector) (list "window 0: 0" 0 "window 0: 1" 1 "window 0: 2" 2
