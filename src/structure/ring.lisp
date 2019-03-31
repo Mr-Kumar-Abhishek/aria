@@ -12,7 +12,8 @@
            :der
            :size
            :emptyp
-           :tolist))
+           :tolist
+           :doring))
 
 (in-package :aria.structure.ring)
 
@@ -22,7 +23,7 @@
   (tail 0 :type integer))
 
 (defmethod ring ((size integer))
-  (make-ring :array (make-array (+ 1 size))))
+  (make-ring :array (make-array (+ 1 size) :initial-element nil)))
 
 (defmethod en ((self ring) value)
   (let* ((array (ring-array self))
@@ -89,3 +90,13 @@
     (dotimes (x size)
       (push (aref array (mod (- head x) length)) collect))
     collect))
+
+(defmethod doring ((self ring) (consumer function))
+  (let* ((array (ring-array self))
+         (head (ring-head self))
+         (tail (ring-tail self))
+         (length (array-total-size array))
+         (size (mod (- head tail) length)))
+    (dotimes (x size)
+      (funcall consumer (aref array (mod (+ (+ tail 1) x) length))))
+    self))
