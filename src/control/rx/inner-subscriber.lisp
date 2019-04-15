@@ -59,7 +59,7 @@
 (defmethod unregister ((self subscriber) (inner inner-subscriber))
   (with-caslock (spinlock self)
     (unless (isstop self)
-      (setf (inners self) (remove inner (inners self)))))
+      (delete inner (inners self))))
   inner)
 
 (defmethod unregister ((self subscriber) (subscription null))
