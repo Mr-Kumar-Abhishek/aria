@@ -21,6 +21,7 @@
                 :emptyp)
   (:export :scheduler
            :gen-scheduler
+           :with-scheduler
 	   :add
 	   :end))
 
@@ -91,6 +92,10 @@
   (setf (signum self) :end)
   (continue self)
   self)
+
+(defmacro with-scheduler (self &body body)
+  `(add ,self (lambda ()
+                ,@body)))
 
 (defmethod continue ((self scheduler))
   (if (cas (slot-value self 'pause) t t) ;; check
